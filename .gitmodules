@@ -1,6 +1,3 @@
 [submodule "src/RegistryParser"]
 	path = src/RegistryParser
 	url = https://github.com/codagroup/registryparser.git
-[submodule "src/managedesent"]
-	path = src/managedesent
-	url = https://github.com/microsoft/ManagedEsent.git

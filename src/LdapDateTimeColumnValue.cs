@@ -1,6 +1,4 @@
-﻿using Microsoft.Isam.Esent.Interop;
-
-namespace NTDSAudit
+﻿namespace Microsoft.Isam.Esent.Interop
 {
     using System;
 

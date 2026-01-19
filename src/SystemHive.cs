@@ -5,6 +5,7 @@
     using System.Globalization;
     using System.Linq;
     using static System.FormattableString;
+    using CODA.RegistryParser;
 
     /// <summary>
     /// Provides methods for extracting the system key.

@@ -11,7 +11,7 @@
     /// <summary>
     /// The application entry point class.
     /// </summary>
-    internal static class Program
+    internal static class OldProgram
     {
         private static double GetPercentage(int actual, int maximum) => Math.Round(((double)100 / maximum) * actual, 1);
 
@@ -24,11 +24,11 @@
             }
         }
 
-        private static void Main(string[] args)
+        private static void OldMain(string[] args)
         {
             LaunchDebugger();
 
-            var commandLineApplication = new CommandLineApplication
+            /*var commandLineApplication = new CommandLineApplication
             {
                 FullName = "NtdsAudit",
                 Description = "A utility for auditing Active Directory",
@@ -165,6 +165,7 @@ Sensitive information will be stored in memory and on disk. Ensure the pwdump fi
             {
                 Console.WriteLine(ex.Message);
             }
+            */
         }
 
         private static void PrintConsoleStatistics(NtdsAudit ntdsAudit, DateTime baseDateTime)
