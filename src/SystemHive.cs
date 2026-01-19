@@ -4,7 +4,6 @@
     using System.Collections.Generic;
     using System.Globalization;
     using System.Linq;
-    using Registry;
     using static System.FormattableString;
 
     /// <summary>

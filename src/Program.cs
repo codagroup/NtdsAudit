@@ -1,6 +1,5 @@
 ﻿namespace NtdsAudit
 {
-    using Microsoft.Extensions.CommandLineUtils;
     using System;
     using System.Diagnostics;
     using System.Globalization;
