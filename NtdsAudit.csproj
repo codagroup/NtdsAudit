@@ -5,6 +5,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <RestorePackages>true</RestorePackages>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +15,7 @@
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Nfluent" Version="3.1.0" />
     <PackageReference Include="NUnit" Version="4.4.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.2" />
   </ItemGroup>
 
 </Project>
