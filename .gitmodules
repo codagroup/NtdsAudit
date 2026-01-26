@@ -1,3 +1,6 @@
-[submodule "src/RegistryParser"]
-	path = src/RegistryParser
+[submodule "./src/RegistryParser"]
+	path = ./src/RegistryParser
+	url = https://github.com/codagroup/registryparser.git
+[submodule "src/registryparser"]
+	path = src/registryparser
 	url = https://github.com/codagroup/registryparser.git
