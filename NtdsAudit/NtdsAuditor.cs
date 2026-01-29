@@ -1,4 +1,4 @@
-﻿namespace NtdsAudit
+﻿namespace CODA.NtdsAudit
 {
     using Microsoft.Isam.Esent.Interop;
     using System;
@@ -15,7 +15,7 @@
     /// <summary>
     /// Processes an NTDS database.
     /// </summary>
-    internal class NtdsAudit
+    public class NtdsAuditor
     {
         private const string DATATABLE = "datatable";
         private const string LINKTABLE = "link_table";
@@ -28,14 +28,14 @@
         private readonly IEnumerable<string> _ouFilter;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NtdsAudit"/> class.
+        /// Initializes a new instance of the <see cref="NtdsAuditor"/> class.
         /// </summary>
         /// <param name="ntdsPath">The path to the NTDS file.</param>
         /// <param name="dumphashes">A value indicating whether to dump hashes.</param>
         /// <param name="includeHistoryHashes">A value indicating whether to include history hashes</param>
         /// <param name="systemHivePath">The path to the System hive.</param>
         /// <param name="wordlistPath">The path to a wordlist for simple hash cracking.</param>
-        public NtdsAudit(string ntdsPath, bool dumphashes, bool includeHistoryHashes, string systemHivePath, string wordlistPath, string ouFilterFilePath)
+        public NtdsAuditor(string ntdsPath, bool dumphashes, bool includeHistoryHashes, string systemHivePath, string wordlistPath, string ouFilterFilePath)
         {
             ntdsPath = ntdsPath ?? throw new ArgumentNullException(nameof(ntdsPath));
 
@@ -231,7 +231,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(EnumerateDatatableTable)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateDatatableTable)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -411,7 +411,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(EnumerateDatatableTableLdapDisplayNames)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateDatatableTableLdapDisplayNames)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -463,7 +463,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(EnumerateLinkTable)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateLinkTable)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -517,7 +517,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(EnumerateMSysObjects)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateMSysObjects)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -579,7 +579,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(PrecomputeHashes)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(PrecomputeHashes)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -608,7 +608,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateComputerInfo)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateComputerInfo)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -650,7 +650,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateDnsForDatatableRows)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateDnsForDatatableRows)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -718,7 +718,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateDomainInfo)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateDomainInfo)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -757,7 +757,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateGroupMembership)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateGroupMembership)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -810,7 +810,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateObjectCategoryStringForDatableRows)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateObjectCategoryStringForDatableRows)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -862,7 +862,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateSecurityGroupInfo)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateSecurityGroupInfo)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -904,7 +904,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CalculateUserInfo)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateUserInfo)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -958,7 +958,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(CheckUsersForWeakPasswords)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CheckUsersForWeakPasswords)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }
@@ -983,7 +983,7 @@
             Stopwatch stopwatch = null;
             if (ShowDebugOutput)
             {
-                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAudit)}::{nameof(DecryptSecretData)}");
+                ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(DecryptSecretData)}");
                 stopwatch = new Stopwatch();
                 stopwatch.Start();
             }

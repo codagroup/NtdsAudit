@@ -1,9 +1,7 @@
 #region Usings
-using NUnit.Framework;
-using NtdsAudit;
 #endregion
 
-namespace NtdsAudit.Tests;
+namespace Tests;
 
 [TestFixture]
 public class NTDSAudit_FileRead_Test
@@ -30,9 +28,9 @@ public class NTDSAudit_FileRead_Test
     private DateTime baseDateTime = new(2026, 01, 23, 14, 0, 32, DateTimeKind.Utc);
     #endregion
     #region Properties
-    public string NtdsPath { get; set; } = $"{Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName}/tests/testdata/ntds.dit";
+    public string NtdsPath { get; set; } = $"{Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName}/testdata/ntds.dit";
     public string PwdumpPath { get; set; } = $"{Directory.GetCurrentDirectory()}/ad.lst";
-    private string SystemHivePath { get; set; } = $"{Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName}/tests/testdata/SYSTEM";
+    private string SystemHivePath { get; set; } = $"{Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName}/testdata/SYSTEM";
     private string WordlistPath { get; set; } = "";
     private string OuFilterPath { get; set; } = "";
     #endregion
@@ -42,7 +40,7 @@ public class NTDSAudit_FileRead_Test
     {
         try
         {
-            NtdsAudit ntds = new(NtdsPath, false, false, SystemHivePath, WordlistPath, OuFilterPath);
+            NtdsAuditor ntds = new(NtdsPath, false, false, SystemHivePath, WordlistPath, OuFilterPath);
             Assert.That(domainCount, Is.EqualTo(ntds.Domains.Count()));
              Assert.That(userCount, Is.EqualTo(ntds.Users.Count()));
              Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
@@ -118,7 +116,7 @@ public class NTDSAudit_FileRead_Test
     }
     #endregion
     #region Helpers
-    internal UserInfo[] GetActiveUsers(NtdsAudit ntds)
+    internal UserInfo[] GetActiveUsers(NtdsAuditor ntds)
     {
         return [.. ntds.Users.Where(x => !x.Disabled && (!x.Expires.HasValue || x.Expires!.Value > baseDateTime))];
     }

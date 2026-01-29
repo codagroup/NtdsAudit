@@ -1,6 +1,6 @@
 ﻿#pragma warning disable SA1600
 
-namespace NtdsAudit
+namespace CODA.NtdsAudit
 {
     using System;
     using System.Runtime.InteropServices;

@@ -1,4 +1,4 @@
-﻿namespace NtdsAudit
+﻿namespace CODA.NtdsAudit
 {
     /// <summary>
     /// Provides information extracted from NTDS in relation to a row from the linktable.

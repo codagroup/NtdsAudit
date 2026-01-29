@@ -1,4 +1,4 @@
-﻿namespace NtdsAudit
+﻿namespace CODA.NtdsAudit
 {
     using System.Collections.Generic;
     using System.Linq;
