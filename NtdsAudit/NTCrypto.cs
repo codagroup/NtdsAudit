@@ -277,7 +277,7 @@
 
         private static byte[] DecryptDataUsingAes(byte[] key, byte[] salt, byte[] data)
         {
-            using (var aes = AesManaged.Create())
+            using (Aes aes = Aes.Create())
             {
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.Zeros;
