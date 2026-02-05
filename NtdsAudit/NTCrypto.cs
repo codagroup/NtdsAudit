@@ -300,7 +300,7 @@
             var hKey = IntPtr.Zero;
 
             // Get handle to the crypto provider
-            if (!NativeMethods.CryptAcquireContext(ref hProv, null, null, NativeMethods.PROVRSAFULL, NativeMethods.CRYPTVERIFYCONTEXT))
+            if (!NativeMethods.CryptAcquireContext(ref hProv, string.Empty, string.Empty, NativeMethods.PROVRSAFULL, NativeMethods.CRYPTVERIFYCONTEXT))
             {
                 NativeMethods.CryptReleaseContext(hProv, 0);
                 throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -390,7 +390,7 @@
             var keyWithHeader2 = keyHeaderBytes.Concat(BitConverter.GetBytes(data2.Length)).Concat(key2).ToArray();
 
             // Get handle to the crypto provider
-            if (!NativeMethods.CryptAcquireContext(ref hProv, null, null, NativeMethods.PROVRSAFULL, NativeMethods.CRYPTVERIFYCONTEXT))
+            if (!NativeMethods.CryptAcquireContext(ref hProv, string.Empty, string.Empty, NativeMethods.PROVRSAFULL, NativeMethods.CRYPTVERIFYCONTEXT))
             {
                 NativeMethods.CryptReleaseContext(hProv, 0);
                 throw new Win32Exception(Marshal.GetLastWin32Error());
