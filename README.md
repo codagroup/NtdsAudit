@@ -5,7 +5,7 @@ This project requires .net 9 or later.
 To download locally:
 
 ```
-git clone https://github.com/codagroup/ntdsaudit.git --recurse-submodules
+git clone https://github.com/codagroup/ntdsaudit.git
 ```
 
 To build debug variant:
@@ -17,3 +17,5 @@ To build release variant:
 ```
 dotnet publish
 ```
+
+**Compiler warning CA1416 is suppressed until cross-platforming starts.**

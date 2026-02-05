@@ -4,6 +4,7 @@
     using System;
     using System.Collections.Generic;
     using System.Collections.ObjectModel;
+    using System.Data.SqlTypes;
     using System.Diagnostics;
     using System.Globalization;
     using System.IO;
@@ -25,7 +26,7 @@
         private readonly LinkTableRow[] _linkTable;
         private readonly MSysObjectsRow[] _mSysObjects;
         private readonly bool _useOUFilter;
-        private readonly IEnumerable<string> _ouFilter;
+        private readonly IEnumerable<string> _ouFilter = [];
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NtdsAuditor"/> class.
@@ -39,7 +40,7 @@
         {
             ntdsPath = ntdsPath ?? throw new ArgumentNullException(nameof(ntdsPath));
 
-            ProgressBar progress = null;
+            ProgressBar? progress = null;
             if (!ShowDebugOutput)
             {
                 progress = new ProgressBar("Performing audit...");
@@ -55,95 +56,34 @@
             {
                 using (var db = new JetDb(ntdsPath))
                 {
-                    _mSysObjects = EnumerateMSysObjects(db);
-                    if (!ShowDebugOutput)
-                    {
-                        progress.Report(8 / (double)100);
-                    }
-
-                    _linkTable = EnumerateLinkTable(db);
-                    if (!ShowDebugOutput)
-                    {
-                        progress.Report(16 / (double)100);
-                    }
-
-                    _ldapDisplayNameToDatatableColumnNameDictionary = EnumerateDatatableTableLdapDisplayNames(db, _mSysObjects);
-                    if (!ShowDebugOutput)
-                    {
-                        progress.Report(24 / (double)100);
-                    }
-
-                    _datatable = EnumerateDatatableTable(db, _ldapDisplayNameToDatatableColumnNameDictionary, dumphashes, includeHistoryHashes);
-                    if (!ShowDebugOutput)
-                    {
-                        progress.Report(32 / (double)100);
-                    }
+                    _mSysObjects = EnumerateMSysObjects(db, ref progress);
+                    _linkTable = EnumerateLinkTable(db, ref progress);
+                    _ldapDisplayNameToDatatableColumnNameDictionary = EnumerateDatatableTableLdapDisplayNames(db, _mSysObjects, ref progress);
+                    _datatable = EnumerateDatatableTable(db, _ldapDisplayNameToDatatableColumnNameDictionary, dumphashes, includeHistoryHashes, ref progress);
                 }
 
                 if (dumphashes)
                 {
-                    DecryptSecretData(systemHivePath, includeHistoryHashes);
-                    if (!ShowDebugOutput)
-                    {
-                        progress.Report(40 / (double)100);
-                    }
+                    DecryptSecretData(systemHivePath, includeHistoryHashes, ref progress);
                 }
 
-                CalculateDnsForDatatableRows();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(48 / (double)100);
-                }
-
-                CalculateObjectCategoryStringForDatableRows();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(56 / (double)100);
-                }
-
-                Domains = CalculateDomainInfo();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(64 / (double)100);
-                }
-
-                Users = CalculateUserInfo();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(72 / (double)100);
-                }
-
+                CalculateDnsForDatatableRows(ref progress);
+                CalculateObjectCategoryStringForDatableRows(ref progress);
+                Domains = CalculateDomainInfo(ref progress);
+                Users = CalculateUserInfo(ref progress);
+                
                 if (dumphashes)
                 {
                     if (!string.IsNullOrWhiteSpace(wordlistPath))
                     {
                         var ntlmHashToPasswordDictionary = PrecomputeHashes(wordlistPath);
-                        CheckUsersForWeakPasswords(ntlmHashToPasswordDictionary);
+                        CheckUsersForWeakPasswords(ntlmHashToPasswordDictionary, ref progress);
                     }
                 }
 
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(80 / (double)100);
-                }
-
-                Groups = CalculateSecurityGroupInfo();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(88 / (double)100);
-                }
-
-                Computers = CalculateComputerInfo();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(96 / (double)100);
-                }
-
-                CalculateGroupMembership();
-                if (!ShowDebugOutput)
-                {
-                    progress.Report(100 / (double)100);
-                }
+                Groups = CalculateSecurityGroupInfo(ref progress);
+                Computers = CalculateComputerInfo(ref progress);
+                CalculateGroupMembership(ref progress);                
             }
             finally
             {
@@ -226,9 +166,9 @@
             return hex.Replace("-", string.Empty);
         }
 
-        private static DatatableRow[] EnumerateDatatableTable(JetDb db, IReadOnlyDictionary<string, string> ldapDisplayNameToDatatableColumnNameDictionary, bool dumpHashes, bool includeHistoryHashes)
+        private static DatatableRow[] EnumerateDatatableTable(JetDb db, IReadOnlyDictionary<string, string> ldapDisplayNameToDatatableColumnNameDictionary, bool dumpHashes, bool includeHistoryHashes, ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateDatatableTable)}");
@@ -323,7 +263,7 @@
                         continue;
                     }
 
-                    SecurityIdentifier sid = null;
+                    SecurityIdentifier? sid = null;
                     uint rid = 0;
                     if (objectSidColumn.Error == JET_wrn.Success)
                     {
@@ -341,10 +281,10 @@
                         Dnt = distinguishedNameTagColumn.Value,
                         GroupType = groupTypeColumn.Value,
                         LastLogon = lastLogonColumn.Value,
-                        Name = nameColumn.Value,
+                        Name = nameColumn.Value ?? string.Empty,
                         ObjectCategoryDnt = objectCategoryColumn.Value,
                         Rid = rid,
-                        Sid = sid,
+                        Sid = sid ?? new SecurityIdentifier(WellKnownSidType.NullSid, sid),
                         ParentDnt = parentDistinguishedNameTagColumn.Value,
                         Phantom = objColumn.Value == false,
                         LastPasswordChange = passwordLastSetColumn.Value,
@@ -399,16 +339,22 @@
                 ConsoleEx.WriteDebug($"  Skipped {deletedCount} deleted objects");
                 ConsoleEx.WriteDebug($"  Enumerated {datatable.Count} objects");
 
-                stopwatch.Stop();
-                ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                if (stopwatch is not null)
+                {
+                    stopwatch.Stop();
+                    ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                }
             }
-
+            if (progress is not null)
+            {
+                progress.Report(32 / (double)100);
+            }
             return datatable.ToArray();
         }
 
-        private static IReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects)
+        private static IReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects, ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateDatatableTableLdapDisplayNames)}");
@@ -450,17 +396,22 @@
             {
                 ConsoleEx.WriteDebug($"  Failed to match {unmatchedCount} LDAP display names to datatable column names");
                 ConsoleEx.WriteDebug($"  Matched {ldapDisplayNameToColumnNameDictionary.Count} LDAP display names to datatable column names");
-
-                stopwatch.Stop();
-                ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                if (stopwatch is not null)
+                {
+                    stopwatch.Stop();
+                    ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                }
             }
-
+            if (progress is not null)
+            {
+                progress.Report(24 / (double)100);
+            }
             return new ReadOnlyDictionary<string, string>(ldapDisplayNameToColumnNameDictionary);
         }
 
-        private static LinkTableRow[] EnumerateLinkTable(JetDb db)
+        private static LinkTableRow[] EnumerateLinkTable(JetDb db, ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateLinkTable)}");
@@ -494,8 +445,8 @@
 
                     linktable.Add(new LinkTableRow
                     {
-                        LinkDnt = linkDntColumn.Value.Value,
-                        BacklinkDnt = backlinkDnt.Value.Value,
+                        LinkDnt = linkDntColumn.Value.HasValue ? linkDntColumn.Value.Value : -1,
+                        BacklinkDnt = backlinkDnt.Value.HasValue ? backlinkDnt.Value.Value : -1
                     });
                 }
 
@@ -503,18 +454,23 @@
                 {
                     ConsoleEx.WriteDebug($"  Ignored {deletedLinkCount} deleted backlinks");
                     ConsoleEx.WriteDebug($"  Found {linktable.Count} backlinks");
-
-                    stopwatch.Stop();
-                    ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                    if (stopwatch is not null)
+                    {
+                        stopwatch.Stop();
+                        ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                    }
                 }
-
+                if (progress is not null)
+                {
+                    progress.Report(16 / (double)100);
+                }
                 return linktable.ToArray();
             }
         }
 
-        private static MSysObjectsRow[] EnumerateMSysObjects(JetDb db)
+        private static MSysObjectsRow[] EnumerateMSysObjects(JetDb db, ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(EnumerateMSysObjects)}");
@@ -549,15 +505,20 @@
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"  Found {mSysObjects.Count} datatable column names");
-
-                stopwatch.Stop();
-                ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                if (stopwatch is not null)
+                {
+                    stopwatch.Stop();
+                    ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                }
             }
-
+            if (progress is not null) 
+            {
+                progress.Report(8 / (double)100);
+            }
             return mSysObjects.ToArray();
         }
 
-        private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value)
+        private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value, ref ProgressBar? progress)
         {
             // https://msdn.microsoft.com/en-us/library/ms675098(v=vs.85).aspx
             if (value == null)
@@ -576,7 +537,7 @@
 
         private static Dictionary<string, string> PrecomputeHashes(string wordlistPath)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(PrecomputeHashes)}");
@@ -594,7 +555,7 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
@@ -603,9 +564,9 @@
             return ntlmHashToPasswordDictionary;
         }
 
-        private ComputerInfo[] CalculateComputerInfo()
+        private ComputerInfo[] CalculateComputerInfo(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateComputerInfo)}");
@@ -622,7 +583,7 @@
                     {
                         Name = row.Name,
                         Dn = row.Dn,
-                        DomainSid = row.Sid.AccountDomainSid,
+                        DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier([],0),
                         Disabled = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE) == (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE,
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                     };
@@ -636,18 +597,21 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-
+            if (progress is not null)
+            {
+                progress.Report(96 / (double)100);
+            }
             return computers.ToArray();
         }
 
-        private void CalculateDnsForDatatableRows()
+        private void CalculateDnsForDatatableRows(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateDnsForDatatableRows)}");
@@ -675,10 +639,12 @@
                         || row.RdnType == organizationalUnitAttrbiuteId
                         || row.RdnType == domainComponentAttrbiuteId)
                 {
-                    dntToPartialDnDictionary[row.Dnt.Value] = attributeIdToDistinguishedNamePrefexDictionary[row.RdnType.Value] + row.Name;
-                    if (row.ParentDnt.Value != 0)
-                    {
-                        dntToPdntDictionary[row.Dnt.Value] = row.ParentDnt.Value;
+                    if (row.Dnt.HasValue) {
+                        dntToPartialDnDictionary[row.Dnt.Value] = attributeIdToDistinguishedNamePrefexDictionary[row.RdnType.Value] + row.Name;
+                        if (row.ParentDnt.HasValue && row.ParentDnt.Value != 0)
+                        {
+                            dntToPdntDictionary[row.Dnt.Value] = row.ParentDnt.Value;
+                        }
                     }
                 }
             }
@@ -702,20 +668,31 @@
                         || row.RdnType == organizationalUnitAttrbiuteId
                         || row.RdnType == domainComponentAttrbiuteId)
                 {
-                    row.Dn = dntToDnDictionary[row.Dnt.Value];
+                    if (row.Dnt.HasValue)
+                    {
+                        row.Dn = dntToDnDictionary[row.Dnt.Value];
+                    }
+                    else
+                    {
+                        row.Dn = string.Empty; 
+                    }    
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
+            if (progress is not null)
+            {
+                progress.Report(48 / (double)100);
+            }
         }
 
-        private DomainInfo[] CalculateDomainInfo()
+        private DomainInfo[] CalculateDomainInfo(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateDomainInfo)}");
@@ -743,18 +720,21 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-
+            if (progress is not null)
+            {
+                progress.Report(64 / (double)100);
+            }
             return domains.ToArray();
         }
 
-        private void CalculateGroupMembership()
+        private void CalculateGroupMembership(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateGroupMembership)}");
@@ -763,7 +743,7 @@
             }
 
             // Create a dictionary mapping DNTs to object category names which can later be used to ignore any backlinks that do not relate to users or groups
-            var dntToObjectCategoryDictionary = _datatable.ToDictionary(x => x.Dnt, x => x.ObjectCategory);
+            var dntToObjectCategoryDictionary = _datatable.ToDictionary(x => x.Dnt.GetValueOrDefault(-1), x => x.ObjectCategory);
 
             // Create dictionary mapping DNTs to a list of backlinks (members)
             var linkDictionary = _linkTable.GroupBy(x => x.LinkDnt).ToDictionary(g => g.Key, g => g.Select(x => x.BacklinkDnt));
@@ -788,7 +768,7 @@
             foreach (var group in Groups)
             {
                 var recursiveMembersDnts = new HashSet<int>();
-                CalculateRecursiveGroupMembership(group, recursiveMembersDnts);
+                CalculateRecursiveGroupMembership(group, recursiveMembersDnts, ref progress);
                 group.RecursiveMembersDnts = recursiveMembersDnts.ToArray();
             }
 
@@ -798,16 +778,20 @@
                 user.RecursiveGroupSids = Groups.Where(x => x.RecursiveMembersDnts.Contains(user.Dnt)).Select(x => x.Sid).ToArray();
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
+            if (progress is not null)
+            {
+                progress.Report(100 / (double)100);
+            }
         }
 
-        private void CalculateObjectCategoryStringForDatableRows()
+        private void CalculateObjectCategoryStringForDatableRows(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateObjectCategoryStringForDatableRows)}");
@@ -817,24 +801,28 @@
 
             var classSchemaRowDnt = _datatable.Single(x => x.Name.Equals("Class-Schema")).Dnt;
 
-            var objectCategoryDntToObjectCategoryStringDictionary = _datatable.Where(x => x.ObjectCategoryDnt == classSchemaRowDnt).ToDictionary(x => x.Dnt, x => x.Name);
+            var objectCategoryDntToObjectCategoryStringDictionary = _datatable.Where(x => x.ObjectCategoryDnt.GetValueOrDefault(-1) == classSchemaRowDnt).ToDictionary(x => x.Dnt.GetValueOrDefault(-1), x => x.Name);
 
             foreach (var row in _datatable)
             {
                 if (row.ObjectCategoryDnt.HasValue)
                 {
-                    row.ObjectCategory = objectCategoryDntToObjectCategoryStringDictionary[row.ObjectCategoryDnt];
+                    row.ObjectCategory = objectCategoryDntToObjectCategoryStringDictionary[row.ObjectCategoryDnt.Value];
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
+            if (progress is not null)
+            {
+                progress.Report(56 / (double)100);
+            }
         }
 
-        private void CalculateRecursiveGroupMembership(GroupInfo group, HashSet<int> recursiveMembersDnts)
+        private void CalculateRecursiveGroupMembership(GroupInfo group, HashSet<int> recursiveMembersDnts, ref ProgressBar? progress)
         {
             foreach (var memberDnt in group.MembersDnts)
             {
@@ -851,15 +839,15 @@
                     var childGroup = Groups.SingleOrDefault(x => x.Dnt == memberDnt);
                     if (childGroup != null)
                     {
-                        CalculateRecursiveGroupMembership(childGroup, recursiveMembersDnts);
+                        CalculateRecursiveGroupMembership(childGroup, recursiveMembersDnts, ref progress);
                     }
                 }
             }
         }
 
-        private GroupInfo[] CalculateSecurityGroupInfo()
+        private GroupInfo[] CalculateSecurityGroupInfo(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateSecurityGroupInfo)}");
@@ -878,8 +866,8 @@
                         {
                             Name = row.Name,
                             Dn = row.Dn,
-                            DomainSid = row.Sid.AccountDomainSid,
-                            Dnt = row.Dnt.Value,
+                            DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier(WellKnownSidType.NullSid,row.Sid.AccountDomainSid),
+                            Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
                             Sid = row.Sid,
                         };
                         groups.Add(groupInfo);
@@ -890,18 +878,23 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
 
+            if (progress is not null)
+            {
+                progress.Report(88 / (double)100);
+            }
+
             return groups.ToArray();
         }
 
-        private UserInfo[] CalculateUserInfo()
+        private UserInfo[] CalculateUserInfo(ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CalculateUserInfo)}");
@@ -914,17 +907,22 @@
             {
                 if ((row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_NORMAL_ACCOUNT) == (int)ADS_USER_FLAG.ADS_UF_NORMAL_ACCOUNT && row.ObjectCategory.Equals("Person"))
                 {
+                    string credentials = string.Empty;
+                    if (row.SupplementalCredentials is not null) 
+                    {
+                        credentials = row.SupplementalCredentials!.ContainsKey("Primary:CLEARTEXT") ? Encoding.Unicode.GetString(row.SupplementalCredentials["Primary:CLEARTEXT"]) : string.Empty;
+                    }
                     var userInfo = new UserInfo
                     {
-                        Dnt = row.Dnt.Value,
+                        Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
                         Name = row.Name,
                         Dn = row.Dn,
-                        DomainSid = row.Sid.AccountDomainSid,
+                        DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier(WellKnownSidType.NullSid, row.Sid.AccountDomainSid),
                         Disabled = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE) == (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE,
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         PasswordNotRequired = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD) == (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD,
                         PasswordNeverExpires = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_DONT_EXPIRE_PASSWD) == (int)ADS_USER_FLAG.ADS_UF_DONT_EXPIRE_PASSWD,
-                        Expires = GetAccountExpiresDateTimeFromByteArray(row.AccountExpires),
+                        Expires = GetAccountExpiresDateTimeFromByteArray(row.AccountExpires, ref progress),
                         PasswordLastChanged = row.LastPasswordChange ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         SamAccountName = row.SamAccountName,
                         Rid = row.Rid,
@@ -932,7 +930,7 @@
                         NtHash = row.NtHash,
                         LmHistory = row.LmHistory,
                         NtHistory = row.NtHistory,
-                        ClearTextPassword = row.SupplementalCredentials?.ContainsKey("Primary:CLEARTEXT") ?? false ? Encoding.Unicode.GetString(row.SupplementalCredentials["Primary:CLEARTEXT"]) : null
+                        ClearTextPassword = credentials
                     };
 
                     if (_useOUFilter && !_ouFilter.Any(filterOU => userInfo.Dn.EndsWith(filterOU)))
@@ -944,18 +942,21 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-
+            if (progress is not null)
+            {
+                progress.Report(72 / (double)100);
+            }
             return users.ToArray();
         }
 
-        private void CheckUsersForWeakPasswords(Dictionary<string, string> ntlmHashToPasswordDictionary)
+        private void CheckUsersForWeakPasswords(Dictionary<string, string> ntlmHashToPasswordDictionary, ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(CheckUsersForWeakPasswords)}");
@@ -971,16 +972,20 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
+            if (progress is not null)
+            {
+                progress.Report(80 / (double)100);
+            }
         }
 
-        private void DecryptSecretData(string systemKeyPath, bool includeHistoryHashes)
+        private void DecryptSecretData(string systemKeyPath, bool includeHistoryHashes, ref ProgressBar? progress)
         {
-            Stopwatch stopwatch = null;
+            Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
             {
                 ConsoleEx.WriteDebug($"Called: {nameof(NtdsAuditor)}::{nameof(DecryptSecretData)}");
@@ -1119,10 +1124,15 @@
                 }
             }
 
-            if (ShowDebugOutput)
+            if (ShowDebugOutput && stopwatch is not null)
             {
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+            }
+
+            if (progress is not null)
+            {
+                progress.Report(40 / (double)100);
             }
         }
     }

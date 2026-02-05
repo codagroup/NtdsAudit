@@ -13,6 +13,6 @@
         /// <summary>
         /// Gets or sets the column name.
         /// </summary>
-        public string ColumnName { get; set; }
+        public string ColumnName { get; set; } = string.Empty;
     }
 }

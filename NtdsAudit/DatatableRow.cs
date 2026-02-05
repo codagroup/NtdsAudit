@@ -14,22 +14,22 @@
         /// <summary>
         /// Gets or sets the SupplementalCredentials.
         /// </summary>
-        public Dictionary<string, byte[]> SupplementalCredentials { get; internal set; }
+        public Dictionary<string, byte[]> SupplementalCredentials { get; internal set; } = [];
 
         /// <summary>
         /// Gets or sets the 'accountExpires' value.
         /// </summary>
-        internal byte[] AccountExpires { get; set; }
+        internal byte[] AccountExpires { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'displayName' value.
         /// </summary>
-        internal string DisplayName { get; set; }
+        internal string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the Distinguished Name.
         /// </summary>
-        internal string Dn { get; set; }
+        internal string Dn { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the 'DNT_col' value.
@@ -39,22 +39,22 @@
         /// <summary>
         /// Gets or sets the 'dBCSPwd' value.
         /// </summary>
-        internal byte[] EncryptedLmHash { get; set; }
+        internal byte[] EncryptedLmHash { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'lmPwdHistory' value.
         /// </summary>
-        internal byte[] EncryptedLmHistory { get; set; }
+        internal byte[] EncryptedLmHistory { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'unicodePwd' value.
         /// </summary>
-        internal byte[] EncryptedNtHash { get; set; }
+        internal byte[] EncryptedNtHash { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'ntPwdHistory' value.
         /// </summary>
-        internal byte[] EncryptedNtHistory { get; set; }
+        internal byte[] EncryptedNtHistory { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'groupType' value.
@@ -74,32 +74,32 @@
         /// <summary>
         /// Gets or sets the decrypted LM hash.
         /// </summary>
-        internal string LmHash { get; set; }
+        internal string LmHash { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the decrypted LM history hashes.
         /// </summary>
-        internal string[] LmHistory { get; set; }
+        internal string[] LmHistory { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'name' value.
         /// </summary>
-        internal string Name { get; set; }
+        internal string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the decrypted NT hash.
         /// </summary>
-        internal string NtHash { get; set; }
+        internal string NtHash { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the decrypted NT history hashes.
         /// </summary>
-        internal string[] NtHistory { get; set; }
+        internal string[] NtHistory { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the object category name.
         /// </summary>
-        internal string ObjectCategory { get; set; }
+        internal string ObjectCategory { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the 'objectCategory' value.
@@ -114,7 +114,7 @@
         /// <summary>
         /// Gets or sets the 'pekList' value.
         /// </summary>
-        internal byte[] PekList { get; set; }
+        internal byte[] PekList { get; set; } = [];
 
         /// <summary>
         /// Gets or sets a value indicating whether the row respresents a phantom record.
@@ -139,17 +139,17 @@
         /// <summary>
         /// Gets or sets the 'sAMAccountName' value.
         /// </summary>
-        internal string SamAccountName { get; set; }
+        internal string SamAccountName { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the 'objectSid' value.
         /// </summary>
-        internal SecurityIdentifier Sid { get; set; }
+        internal SecurityIdentifier Sid { get; set; } = new(WellKnownSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the 'supplementalCredentials' value.
         /// </summary>
-        internal byte[] SupplementalCredentialsBlob { get; set; }
+        internal byte[] SupplementalCredentialsBlob { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the 'userAccountControl' value.

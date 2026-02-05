@@ -12,7 +12,7 @@
         /// <summary>
         /// Gets or sets the Distinguished Name.
         /// </summary>
-        public string Dn { get; set; }
+        public string Dn { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the Distinguished Name Tag.
@@ -22,26 +22,26 @@
         /// <summary>
         /// Gets or sets the SID of the domain the group belongs to.
         /// </summary>
-        public SecurityIdentifier DomainSid { get; set; }
+        public SecurityIdentifier DomainSid { get; set; } = new(WellKnownSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the list of DNTs of group members.
         /// </summary>
-        public int[] MembersDnts { get; set; }
+        public int[] MembersDnts { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the name.
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the recursive list of DNTs of group members.
         /// </summary>
-        public int[] RecursiveMembersDnts { get; set; }
+        public int[] RecursiveMembersDnts { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the SID.
         /// </summary>
-        public SecurityIdentifier Sid { get; set; }
+        public SecurityIdentifier Sid { get; set; } = new(WellKnownSidType.NullSid, null);
     }
 }

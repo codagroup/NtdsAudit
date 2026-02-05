@@ -5,6 +5,7 @@
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
+    using System.Reflection.Metadata.Ecma335;
     using System.Runtime.InteropServices;
     using System.Security.Cryptography;
     using System.Text;
@@ -144,30 +145,24 @@
 
             var salt = encryptedPekListBlob.Skip(8).Take(16).ToArray();
             var encryptedPekList = encryptedPekListBlob.Skip(24).ToArray();
-            byte[] decryptedPekList = null;
 
             switch ((PekListFlags)flags)
             {
                 case PekListFlags.ClearText:
-                    decryptedPekList = encryptedPekList;
-                    break;
-
+                    return ParsePekList(encryptedPekList);
                 case PekListFlags.Encrypted:
                     switch ((PekListVersion)version)
                     {
                         case PekListVersion.Windows2000:
-                            decryptedPekList = DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000);
-                            break;
-
+                            return ParsePekList(DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000));
                         case PekListVersion.Windows2016:
-                            decryptedPekList = DecryptDataUsingAes(systemKey, salt, encryptedPekList).ToArray();
-                            break;
+                            return ParsePekList(DecryptDataUsingAes(systemKey, salt, encryptedPekList).ToArray());
+                        default:
+                            throw new ArgumentException("Invalid Pek List");
                     }
-
-                    break;
+                default:
+                    throw new ArgumentException("Invalid Pek List");
             }
-
-            return ParsePekList(decryptedPekList);
         }
 
         /// <summary>

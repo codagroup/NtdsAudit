@@ -22,33 +22,34 @@
         public static byte[] LoadSystemKeyFromHive(string systemHivePath)
         {
             systemHivePath = systemHivePath ?? throw new ArgumentNullException(nameof(systemHivePath));
+            var scrambledKeyList = new List<byte>();
+            var systemKeyList = new List<byte>();
 
             // Load the registry hive
             var hive = new RegistryHiveOnDemand(systemHivePath);
 
-            // Get the current control set version from the hive
-            var currentControlSetVersion = int.Parse(hive.GetKey("Select").Values[0].ValueData, CultureInfo.InvariantCulture);
-
-            // Get the class name of the four subkeys in which the sytem key is stored, and convert to hex to get the scrambled system key
-            var scrambledKeyList = new List<byte>();
-
-            foreach (var keyName in new string[] { "JD", "Skew1", "GBG", "Data" })
+            if (hive.GetKey("Select") is not null)
             {
-                var key = hive.GetKey(Invariant($"ControlSet00{currentControlSetVersion}\\Control\\Lsa\\{keyName}"));
-                var className = key.ClassName;
-                scrambledKeyList.AddRange(Enumerable.Range(0, className.Length / 2).Select(x => Convert.ToByte(className.Substring(x * 2, 2), 16)).ToArray());
+                // Get the current control set version from the hive
+                var currentControlSetVersion = int.Parse(hive.GetKey("Select")!.Values[0].ValueData, CultureInfo.InvariantCulture);
+
+                // Get the class name of the four subkeys in which the sytem key is stored, and convert to hex to get the scrambled system key
+                
+                foreach (var keyName in new string[] { "JD", "Skew1", "GBG", "Data" })
+                {
+                    var key = hive.GetKey(Invariant($"ControlSet00{currentControlSetVersion}\\Control\\Lsa\\{keyName}"));
+                    var className = key.ClassName;
+                    scrambledKeyList.AddRange(Enumerable.Range(0, className.Length / 2).Select(x => Convert.ToByte(className.Substring(x * 2, 2), 16)).ToArray());
+                }
+
+                var scrambledKey = scrambledKeyList.ToArray();
+
+                // Unscramble the system key based on the known transforms
+                for (var i = 0; i < scrambledKey.Length; i++)
+                {
+                    systemKeyList.Add(scrambledKey[SYSTEMKEYTRANSFORMS[i]]);
+                }
             }
-
-            var scrambledKey = scrambledKeyList.ToArray();
-
-            // Unscramble the system key based on the known transforms
-            var systemKeyList = new List<byte>();
-
-            for (var i = 0; i < scrambledKey.Length; i++)
-            {
-                systemKeyList.Add(scrambledKey[SYSTEMKEYTRANSFORMS[i]]);
-            }
-
             return systemKeyList.ToArray();
         }
     }
