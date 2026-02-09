@@ -144,7 +144,7 @@
         /// <summary>
         /// Gets or sets the 'objectSid' value.
         /// </summary>
-        internal SecurityIdentifier Sid { get; set; } = new(WellKnownSidType.NullSid, null);
+        internal MockSid Sid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the 'supplementalCredentials' value.

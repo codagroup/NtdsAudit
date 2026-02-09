@@ -262,7 +262,7 @@
                         continue;
                     }
 
-                    SecurityIdentifier? sid = null;
+                    MockSid? sid = null;
                     uint rid = 0;
                     if (objectSidColumn.Error == JET_wrn.Success)
                     {
@@ -270,7 +270,7 @@
                         var ridBytes = sidBytes.Skip(sidBytes.Length - sizeof(int)).Take(sizeof(int)).Reverse().ToArray();
                         sidBytes = sidBytes.Take(sidBytes.Length - sizeof(int)).Concat(ridBytes).ToArray();
                         rid = BitConverter.ToUInt32(ridBytes, 0);
-                        sid = new SecurityIdentifier(sidBytes, 0);
+                        sid = new MockSid(sidBytes, 0);
                     }
 
                     var row = new DatatableRow
@@ -283,7 +283,7 @@
                         Name = nameColumn.Value ?? string.Empty,
                         ObjectCategoryDnt = objectCategoryColumn.Value,
                         Rid = rid,
-                        Sid = sid ?? new SecurityIdentifier(WellKnownSidType.NullSid, sid),
+                        Sid = sid ?? new MockSid(MockSidType.NullSid, sid),
                         ParentDnt = parentDistinguishedNameTagColumn.Value,
                         Phantom = objColumn.Value == false,
                         LastPasswordChange = passwordLastSetColumn.Value,
@@ -582,7 +582,7 @@
                     {
                         Name = row.Name,
                         Dn = row.Dn,
-                        DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier([],0),
+                        DomainSid = row.Sid.AccountDomainSid ?? new MockSid([],0),
                         Disabled = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE) == (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE,
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                     };
@@ -710,9 +710,9 @@
                         Name = row.Name,
                         Dn = row.Dn,
                     };
-                    domainInfo.AdministratorsSid = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, domainInfo.Sid);
-                    domainInfo.DomainAdminsSid = new SecurityIdentifier(WellKnownSidType.AccountDomainAdminsSid, domainInfo.Sid);
-                    domainInfo.EnterpriseAdminsSid = new SecurityIdentifier(WellKnownSidType.AccountEnterpriseAdminsSid, domainInfo.Sid);
+                    domainInfo.AdministratorsSid = new MockSid(MockSidType.BuiltinAdministratorsSid, domainInfo.Sid);
+                    domainInfo.DomainAdminsSid = new MockSid(MockSidType.AccountDomainAdminsSid, domainInfo.Sid);
+                    domainInfo.EnterpriseAdminsSid = new MockSid(MockSidType.AccountEnterpriseAdminsSid, domainInfo.Sid);
                     domainInfo.Fqdn = domainInfo.Dn.Replace("DC=", ".").Replace(",", string.Empty).TrimStart('.');
 
                     domains.Add(domainInfo);
@@ -865,7 +865,7 @@
                         {
                             Name = row.Name,
                             Dn = row.Dn,
-                            DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier(WellKnownSidType.NullSid,row.Sid.AccountDomainSid),
+                            DomainSid = row.Sid.AccountDomainSid ?? new MockSid(MockSidType.NullSid,row.Sid.AccountDomainSid),
                             Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
                             Sid = row.Sid,
                         };
@@ -916,7 +916,7 @@
                         Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
                         Name = row.Name,
                         Dn = row.Dn,
-                        DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier(WellKnownSidType.NullSid, row.Sid.AccountDomainSid),
+                        DomainSid = row.Sid.AccountDomainSid ?? new MockSid(MockSidType.NullSid, row.Sid.AccountDomainSid),
                         Disabled = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE) == (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE,
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         PasswordNotRequired = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD) == (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD,

@@ -1,6 +1,3 @@
-#region Usings
-#endregion
-
 namespace Tests;
 
 [TestFixture]

@@ -33,7 +33,7 @@
         /// <summary>
         /// Gets or sets the SID of the doamin the account belongs to.
         /// </summary>
-        public SecurityIdentifier DomainSid { get; set; } = new (WellKnownSidType.NullSid, null);
+        public MockSid DomainSid { get; set; } = new (MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the expiration date.
@@ -93,7 +93,7 @@
         /// <summary>
         /// Gets or sets the SIDs of groups of which the account is a member.
         /// </summary>
-        public SecurityIdentifier[] RecursiveGroupSids { get; set; } = [];
+        public MockSid[] RecursiveGroupSids { get; set; } = [];
 
         /// <summary>
         /// Gets or sets the Relative ID.

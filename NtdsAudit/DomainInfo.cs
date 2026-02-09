@@ -1,7 +1,6 @@
 ﻿namespace CODA.NtdsAudit
 {
     using System.Diagnostics;
-    using System.Security.Principal;
 
     /// <summary>
     /// Provides information extracted from NTDS related to a domain.
@@ -12,7 +11,7 @@
         /// <summary>
         /// Gets or sets the SID of the Administrators group.
         /// </summary>
-        public SecurityIdentifier AdministratorsSid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid AdministratorsSid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the Distinguised Name of the domain.
@@ -22,12 +21,12 @@
         /// <summary>
         /// Gets or sets the SID of the Domain Admin group.
         /// </summary>
-        public SecurityIdentifier DomainAdminsSid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid DomainAdminsSid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the SID of the Enterprise Admins group.
         /// </summary>
-        public SecurityIdentifier EnterpriseAdminsSid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid EnterpriseAdminsSid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the FQDN of the domain.
@@ -42,6 +41,6 @@
         /// <summary>
         /// Gets or sets the SID of the domain.
         /// </summary>
-        public SecurityIdentifier Sid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid Sid { get; set; } = new(MockSidType.NullSid, null);
     }
 }

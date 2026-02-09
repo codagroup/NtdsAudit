@@ -22,7 +22,7 @@
         /// <summary>
         /// Gets or sets the SID of the domain the group belongs to.
         /// </summary>
-        public SecurityIdentifier DomainSid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid DomainSid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the list of DNTs of group members.
@@ -42,6 +42,6 @@
         /// <summary>
         /// Gets or sets the SID.
         /// </summary>
-        public SecurityIdentifier Sid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid Sid { get; set; } = new(MockSidType.NullSid, null);
     }
 }
