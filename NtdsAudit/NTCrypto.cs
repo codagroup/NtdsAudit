@@ -5,7 +5,6 @@
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
-    using System.Reflection.Metadata.Ecma335;
     using System.Runtime.InteropServices;
     using System.Security.Cryptography;
     using System.Text;
