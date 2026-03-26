@@ -252,8 +252,8 @@ public static class Program
                             $"Expired={!users[i].Disabled && users[i].Expires.HasValue && users[i].Expires!.Value < baseDateTime}," +
                             $"PasswordNeverExpires={users[i].PasswordNeverExpires}," +
                             $"PasswordNotRequired={users[i].PasswordNotRequired}," +
-                            $"PasswordLastChanged={users[i].PasswordLastChanged.ToString("yyyyMMddHHmm")}," +
-                            $"LastLogonTimestamp={users[i].LastLogon.ToString("yyyyMMddHHmm")}," +
+                            $"PasswordLastChanged={users[i].PasswordLastChanged:yyyyMMddHHmm}," +
+                            $"LastLogonTimestamp={users[i].LastLogon:yyyyMMddHHmm}," +
                             $"IsAdministrator={users[i].RecursiveGroupSids.Contains(domain.AdministratorsSid)}," +
                             $"IsDomainAdmin={users[i].RecursiveGroupSids.Contains(domain.DomainAdminsSid)}," +
                             $"IsEnterpriseAdmin={users[i].RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()}";
@@ -314,8 +314,8 @@ public static class Program
                             $"Expired={!users[i].Disabled && users[i].Expires.HasValue && users[i].Expires!.Value < baseDateTime}," +
                             $"PasswordNeverExpires={users[i].PasswordNeverExpires}," +
                             $"PasswordNotRequired={users[i].PasswordNotRequired}," +
-                            $"PasswordLastChanged={users[i].PasswordLastChanged.ToString("yyyyMMddHHmm")}," +
-                            $"LastLogonTimestamp={users[i].LastLogon.ToString("yyyyMMddHHmm")}," +
+                            $"PasswordLastChanged={users[i].PasswordLastChanged:yyyyMMddHHmm}," +
+                            $"LastLogonTimestamp={users[i].LastLogon:yyyyMMddHHmm}," +
                             $"IsAdministrator={users[i].RecursiveGroupSids.Contains(domain.AdministratorsSid)}," +
                             $"IsDomainAdmin={users[i].RecursiveGroupSids.Contains(domain.DomainAdminsSid)}," +
                             $"IsEnterpriseAdmin={users[i].RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()}";
@@ -397,7 +397,7 @@ public static class Program
     {
         Console.Write($"  {statistic} ".PadRight(70, '_'));
         var percentageString = (maximum < 1) ? "N/A" : GetPercentage(actual, maximum) + "%";
-        Console.Write($" {actual.ToString().PadLeft(5)} of {maximum.ToString().PadLeft(5)} ({percentageString})");
+        Console.Write($" {actual,5} of {maximum,5} ({percentageString})");
         Console.Write(Environment.NewLine);
     }
 

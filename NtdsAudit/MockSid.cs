@@ -57,7 +57,7 @@ namespace CODA.NtdsAudit
             // For some sidTypes, the domainSid parameter must be specified. no other validation is performed.
             if (IsDomainSid(sidType) && domainSid is null)
             {
-                throw new ArgumentNullException(nameof(domainSid), $"When sidType is {sidType.ToString()} domainSid cannot be null");
+                throw new ArgumentNullException(nameof(domainSid), $"When sidType is {sidType} domainSid cannot be null");
             }
             byte[]? binarySid = CreateWellKnownSid(sidType, domainSid);
             CreateFromBinaryForm(binarySid!, 0);
@@ -105,14 +105,14 @@ namespace CODA.NtdsAudit
             if (binaryForm[offset] != Revision)
             {
                 // Revision is incorrect
-                throw new ArgumentException($"Binary form indicates incorrect revision: {binaryForm[offset].ToString()}", nameof(binaryForm));
+                throw new ArgumentException($"Binary form indicates incorrect revision: {binaryForm[offset]}", nameof(binaryForm));
             }
 
             // Insist on the correct number of subauthorities
             int subAuthoritiesLength = binaryForm[offset + 1];
             if (subAuthoritiesLength > MaxSubAuthorities)
             {
-                throw new ArgumentException($"Incorrect number of subauthorities: {binaryForm[offset+1].ToString()}", nameof(binaryForm));
+                throw new ArgumentException($"Incorrect number of subauthorities: {binaryForm[offset + 1]}", nameof(binaryForm));
             }
             // Make sure the buffer is big enough
 
@@ -157,7 +157,7 @@ namespace CODA.NtdsAudit
                 throw new ArgumentOutOfRangeException(
                     "subAuthorities.Length",
                     subAuthorities.Length,
-                    $"Number of subautorities cannot exceed {MaxSubAuthorities.ToString()}"
+                    $"Number of subautorities cannot exceed {MaxSubAuthorities}"
                 );
             }
             
