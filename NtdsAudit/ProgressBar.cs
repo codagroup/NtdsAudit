@@ -96,7 +96,7 @@
             _timer.Change(_animationInterval, TimeSpan.FromMilliseconds(-1));
         }
 
-        private void TimerHandler(object state)
+        private void TimerHandler(object? state)
         {
             lock (_lock)
             {

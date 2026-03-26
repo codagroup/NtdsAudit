@@ -30,8 +30,8 @@ namespace CODA.NtdsAudit
         internal const int MaxSubAuthorities = 15;
         internal const long MaxIdentifierAuthority = 0xFFFFFFFFFFFF;
         private MockAuthority _authority;
-        private int[] _subAuthorities;
-        private byte[] _binaryForm;
+        private int[]? _subAuthorities;
+        private byte[]? _binaryForm;
         private MockSid? _accountDomainSid;
         #endregion
         #region Constructors
@@ -365,10 +365,10 @@ namespace CODA.NtdsAudit
         #region Properties
         public static byte Revision { get; private set; } = 1; //This is usually 1, but sometimes 0 or 2 because reasons.
         public static readonly int MinBinaryLength = 8;
-        public string SddlForm 
+        public string SddlForm
         {
-            get; private set; 
-        }
+            get; private set;
+        } = String.Empty;
         public string Value { get { return SddlForm.ToUpperInvariant(); } }
         public MockSid? AccountDomainSid { get {
                 if (_accountDomainSid is null)
@@ -377,9 +377,9 @@ namespace CODA.NtdsAudit
                 }
                 return _accountDomainSid;
             } }
-        public int BinaryLength { get { return _binaryForm.Length; } }
+        public int BinaryLength { get { return _binaryForm!.Length; } }
         public MockAuthority Authority {  get { return _authority;} }
-        public int[] SubAuthorities { get { return _subAuthorities; } }
+        public int[] SubAuthorities { get { return _subAuthorities!; } }
         #endregion
         #region Overrides
         public override bool Equals([NotNullWhen(true)] object? obj)
@@ -393,7 +393,7 @@ namespace CODA.NtdsAudit
         public override int GetHashCode()
         {
             int hash = ((long)_authority).GetHashCode();
-            for (int i = 0; i < _subAuthorities.Length; i++)
+            for (int i = 0; i < _subAuthorities!.Length; i++)
             {
                 hash ^= _subAuthorities[i];
             }
@@ -419,7 +419,7 @@ namespace CODA.NtdsAudit
                 int length = 4;
                 ((ulong)_authority).TryFormat(result.Slice(length), out int written);
                 length += written;
-                int[] values = _subAuthorities;
+                int[] values = _subAuthorities!;
                 for (int index = 0; index < values.Length; index++)
                 {
                     result[length] = '-';

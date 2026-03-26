@@ -184,7 +184,7 @@ public static class Program
     }
     private static void WritePwDumpFile(string pwdumpPath, NtdsAuditor ntdsAudit, DateTime baseDateTime, bool includeHistoryHashes, bool wordlistInUse, string dumpReversiblePath, bool useRdn, bool anonymise)
     {
-        DomainInfo domain = null;
+        DomainInfo? domain = null;
 
         // NTDS will only contain hashes for a single domain, even when NTDS was dumped from a global catalog server, ensure we only print hashes for that domain, and warn the user if there are other domains in NTDS
         if (ntdsAudit.Domains.Length > 1)
@@ -203,144 +203,191 @@ public static class Program
             domain = ntdsAudit.Domains[0];
         }
 
-        var users = ntdsAudit.Users.Where(x => domain.Sid.Equals(x.DomainSid)).ToArray();
-
-        if (users.Any(x => !string.IsNullOrEmpty(x.ClearTextPassword)))
+        if (domain is not null)
         {
-            ConsoleEx.WriteWarning($"WARNING:");
-            ConsoleEx.WriteWarning($"The NTDS file contains user accounts with passwords stored using reversible encryption. Use the --dump-reversible option to output these users and passwords.");
+            var users = ntdsAudit.Users.Where(x => domain.Sid.Equals(x.DomainSid)).ToArray();
+
+            if (users.Any(x => !string.IsNullOrEmpty(x.ClearTextPassword)))
+            {
+                ConsoleEx.WriteWarning($"WARNING:");
+                ConsoleEx.WriteWarning($"The NTDS file contains user accounts with passwords stored using reversible encryption. Use the --dump-reversible option to output these users and passwords.");
+                Console.WriteLine();
+            }
+
+            var activeUsers = users.Where(x => !x.Disabled && (!x.Expires.HasValue || x.Expires.Value > baseDateTime)).ToArray();
+            var activeUsersWithLMs = activeUsers.Where(x => !string.IsNullOrEmpty(x.LmHash) && x.LmHash != NtdsAuditor.EMPTY_LM_HASH).ToArray();
+            var activeUsersWithWeakPasswords = activeUsers.Where(x => !string.IsNullOrEmpty(x.Password)).ToArray();
+            var activeUsersWithDuplicatePasswordsCount = activeUsers.Where(x => x.NtHash != NtdsAuditor.EMPTY_NT_HASH).GroupBy(x => x.NtHash).Where(g => g.Count() > 1).Sum(g => g.Count());
+            var activeUsersWithPasswordStoredUsingReversibleEncryption = activeUsers.Where(x => !string.IsNullOrEmpty(x.ClearTextPassword)).ToArray();
+
+            Console.WriteLine($"Password stats for: {domain.Fqdn}");
+            WriteStatistic("Active users using LM hashing", activeUsersWithLMs.Length, activeUsers.Length);
+            WriteStatistic("Active users with duplicate passwords", activeUsersWithDuplicatePasswordsCount, activeUsers.Length);
+            WriteStatistic("Active users with password stored using reversible encryption", activeUsersWithPasswordStoredUsingReversibleEncryption.Length, activeUsers.Length);
+            if (wordlistInUse)
+            {
+                WriteStatistic("Active user accounts with very weak passwords", activeUsersWithWeakPasswords.Length, activeUsers.Length);
+            }
+
             Console.WriteLine();
-        }
 
-        var activeUsers = users.Where(x => !x.Disabled && (!x.Expires.HasValue || x.Expires.Value > baseDateTime)).ToArray();
-        var activeUsersWithLMs = activeUsers.Where(x => !string.IsNullOrEmpty(x.LmHash) && x.LmHash != NtdsAuditor.EMPTY_LM_HASH).ToArray();
-        var activeUsersWithWeakPasswords = activeUsers.Where(x => !string.IsNullOrEmpty(x.Password)).ToArray();
-        var activeUsersWithDuplicatePasswordsCount = activeUsers.Where(x => x.NtHash != NtdsAuditor.EMPTY_NT_HASH).GroupBy(x => x.NtHash).Where(g => g.Count() > 1).Sum(g => g.Count());
-        var activeUsersWithPasswordStoredUsingReversibleEncryption = activeUsers.Where(x => !string.IsNullOrEmpty(x.ClearTextPassword)).ToArray();
-
-        Console.WriteLine($"Password stats for: {domain.Fqdn}");
-        WriteStatistic("Active users using LM hashing", activeUsersWithLMs.Length, activeUsers.Length);
-        WriteStatistic("Active users with duplicate passwords", activeUsersWithDuplicatePasswordsCount, activeUsers.Length);
-        WriteStatistic("Active users with password stored using reversible encryption", activeUsersWithPasswordStoredUsingReversibleEncryption.Length, activeUsers.Length);
-        if (wordlistInUse)
-        {
-            WriteStatistic("Active user accounts with very weak passwords", activeUsersWithWeakPasswords.Length, activeUsers.Length);
-        }
-
-        Console.WriteLine();
-
-        // <username>:<uid>:<LM-hash>:<NTLM-hash>:<comment>:<homedir>:
-        using (var file = new StreamWriter(pwdumpPath, false))
-        {
-            StreamWriter mapFile = null;
-            if (anonymise)
+            // <username>:<uid>:<LM-hash>:<NTLM-hash>:<comment>:<homedir>:
+            using (var file = new StreamWriter(pwdumpPath, false))
             {
-                mapFile = new StreamWriter($"{pwdumpPath}.map", false);
-            }
-
-            var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
-            for (var i = 0; i < users.Length; i++)
-            {
-                string userId;
-
                 if (anonymise)
                 {
-                    var bytes = new byte[16];
-                    r.NextBytes(bytes);
-                    userId = new Guid(bytes).ToString();
-                }
-                else if (useRdn)
-                {
-                    userId = users[i].Name;
-                }
-                else
-                {
-                    userId = users[i].SamAccountName;
-                }
-
-                var comments = $"Disabled={users[i].Disabled}," +
-                    $"Expired={!users[i].Disabled && users[i].Expires.HasValue && users[i].Expires.Value < baseDateTime}," +
-                    $"PasswordNeverExpires={users[i].PasswordNeverExpires}," +
-                    $"PasswordNotRequired={users[i].PasswordNotRequired}," +
-                    $"PasswordLastChanged={users[i].PasswordLastChanged.ToString("yyyyMMddHHmm")}," +
-                    $"LastLogonTimestamp={users[i].LastLogon.ToString("yyyyMMddHHmm")}," +
-                    $"IsAdministrator={users[i].RecursiveGroupSids.Contains(domain.AdministratorsSid)}," +
-                    $"IsDomainAdmin={users[i].RecursiveGroupSids.Contains(domain.DomainAdminsSid)}," +
-                    $"IsEnterpriseAdmin={users[i].RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()}";
-                var homeDir = string.Empty;
-                file.Write($"{(anonymise ? string.Empty : $"{domain.Fqdn}\\")}{userId}:{(anonymise ? i : users[i].Rid)}:{users[i].LmHash}:{users[i].NtHash}:{comments}:{homeDir}:");
-
-                if (includeHistoryHashes && users[i].NtHistory != null && users[i].NtHistory.Length > 0)
-                {
-                    file.Write(Environment.NewLine);
-                }
-                else if (i < users.Length - 1)
-                {
-                    file.Write(Environment.NewLine);
-                }
-
-                if (includeHistoryHashes && users[i].NtHistory != null && users[i].NtHistory.Length > 0)
-                {
-                    for (var j = 0; j < users[i].NtHistory.Length; j++)
+                    StreamWriter mapFile = new StreamWriter($"{pwdumpPath}.map", false);
+                    var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
+                    for (var i = 0; i < users.Length; i++)
                     {
-                        var lmHash = (users[i].LmHistory?.Length > j) ? users[i].LmHistory[j] : NtdsAuditor.EMPTY_LM_HASH;
-                        file.Write($"{(anonymise ? string.Empty : $"{domain.Fqdn}\\")}{userId}__history_{j}:{(anonymise ? i : users[i].Rid)}:{lmHash}:{users[i].NtHistory[j]}:::");
+                        string userId;
 
-                        if (j < users[i].NtHistory.Length || i < users.Length - 1)
-                        {
-                            file.Write(Environment.NewLine);
-                        }
-                    }
-                }
-
-                if (anonymise)
-                {
-                    mapFile.Write($"{userId}:{domain.Fqdn}\\{(useRdn ? users[i].Name : users[i].SamAccountName)}");
-                    mapFile.Write(Environment.NewLine);
-                }
-            }
-
-            if (anonymise)
-            {
-                mapFile.Dispose();
-            }
-        }
-
-        if (users.Any(x => !string.IsNullOrEmpty(x.ClearTextPassword)) && !string.IsNullOrWhiteSpace(dumpReversiblePath))
-        {
-            using (var file = new StreamWriter(dumpReversiblePath, false))
-            {
-                var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
-                for (var i = 0; i < users.Length; i++)
-                {
-                    string userId;
-
-                    if (anonymise)
-                    {
                         var bytes = new byte[16];
                         r.NextBytes(bytes);
                         userId = new Guid(bytes).ToString();
-                    }
-                    else if (useRdn)
-                    {
-                        userId = users[i].Name;
-                    }
-                    else
-                    {
-                        userId = users[i].SamAccountName;
-                    }
 
-                    if (!string.IsNullOrEmpty(users[i].ClearTextPassword))
-                    {
-                        file.Write($"{domain.Fqdn}\\{userId}:{users[i].ClearTextPassword}");
+                        var comments = $"Disabled={users[i].Disabled}," +
+                            $"Expired={!users[i].Disabled && users[i].Expires.HasValue && users[i].Expires!.Value < baseDateTime}," +
+                            $"PasswordNeverExpires={users[i].PasswordNeverExpires}," +
+                            $"PasswordNotRequired={users[i].PasswordNotRequired}," +
+                            $"PasswordLastChanged={users[i].PasswordLastChanged.ToString("yyyyMMddHHmm")}," +
+                            $"LastLogonTimestamp={users[i].LastLogon.ToString("yyyyMMddHHmm")}," +
+                            $"IsAdministrator={users[i].RecursiveGroupSids.Contains(domain.AdministratorsSid)}," +
+                            $"IsDomainAdmin={users[i].RecursiveGroupSids.Contains(domain.DomainAdminsSid)}," +
+                            $"IsEnterpriseAdmin={users[i].RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()}";
+                        var homeDir = string.Empty;
+                        file.Write($"{(anonymise ? string.Empty : $"{domain.Fqdn}\\")}{userId}:{(anonymise ? i : users[i].Rid)}:{users[i].LmHash}:{users[i].NtHash}:{comments}:{homeDir}:");
 
-                        if (i < users.Length - 1)
+                        if (includeHistoryHashes && users[i].NtHistory != null && users[i].NtHistory.Length > 0)
                         {
                             file.Write(Environment.NewLine);
+                        }
+                        else if (i < users.Length - 1)
+                        {
+                            file.Write(Environment.NewLine);
+                        }
+
+                        if (includeHistoryHashes && users[i].NtHistory != null && users[i].NtHistory.Length > 0)
+                        {
+                            for (var j = 0; j < users[i].NtHistory.Length; j++)
+                            {
+                                var lmHash = (users[i].LmHistory?.Length > j) ? users[i].LmHistory[j] : NtdsAuditor.EMPTY_LM_HASH;
+                                file.Write($"{(anonymise ? string.Empty : $"{domain.Fqdn}\\")}{userId}__history_{j}:{(anonymise ? i : users[i].Rid)}:{lmHash}:{users[i].NtHistory[j]}:::");
+
+                                if (j < users[i].NtHistory.Length || i < users.Length - 1)
+                                {
+                                    file.Write(Environment.NewLine);
+                                }
+                            }
+                        }
+
+                        mapFile.Write($"{userId}:{domain.Fqdn}\\{(useRdn ? users[i].Name : users[i].SamAccountName)}");
+                        mapFile.Write(Environment.NewLine);
+                        mapFile.Dispose();
+                    }
+                }
+                else
+                {
+                    var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
+                    for (var i = 0; i < users.Length; i++)
+                    {
+                        string userId;
+
+                        if (anonymise)
+                        {
+                            var bytes = new byte[16];
+                            r.NextBytes(bytes);
+                            userId = new Guid(bytes).ToString();
+                        }
+                        else if (useRdn)
+                        {
+                            userId = users[i].Name;
+                        }
+                        else
+                        {
+                            userId = users[i].SamAccountName;
+                        }
+
+                        var comments = $"Disabled={users[i].Disabled}," +
+                            $"Expired={!users[i].Disabled && users[i].Expires.HasValue && users[i].Expires!.Value < baseDateTime}," +
+                            $"PasswordNeverExpires={users[i].PasswordNeverExpires}," +
+                            $"PasswordNotRequired={users[i].PasswordNotRequired}," +
+                            $"PasswordLastChanged={users[i].PasswordLastChanged.ToString("yyyyMMddHHmm")}," +
+                            $"LastLogonTimestamp={users[i].LastLogon.ToString("yyyyMMddHHmm")}," +
+                            $"IsAdministrator={users[i].RecursiveGroupSids.Contains(domain.AdministratorsSid)}," +
+                            $"IsDomainAdmin={users[i].RecursiveGroupSids.Contains(domain.DomainAdminsSid)}," +
+                            $"IsEnterpriseAdmin={users[i].RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()}";
+                        var homeDir = string.Empty;
+                        file.Write($"{(anonymise ? string.Empty : $"{domain.Fqdn}\\")}{userId}:{(anonymise ? i : users[i].Rid)}:{users[i].LmHash}:{users[i].NtHash}:{comments}:{homeDir}:");
+
+                        if (includeHistoryHashes && users[i].NtHistory != null && users[i].NtHistory.Length > 0)
+                        {
+                            file.Write(Environment.NewLine);
+                        }
+                        else if (i < users.Length - 1)
+                        {
+                            file.Write(Environment.NewLine);
+                        }
+
+                        if (includeHistoryHashes && users[i].NtHistory != null && users[i].NtHistory.Length > 0)
+                        {
+                            for (var j = 0; j < users[i].NtHistory.Length; j++)
+                            {
+                                var lmHash = (users[i].LmHistory?.Length > j) ? users[i].LmHistory[j] : NtdsAuditor.EMPTY_LM_HASH;
+                                file.Write($"{(anonymise ? string.Empty : $"{domain.Fqdn}\\")}{userId}__history_{j}:{(anonymise ? i : users[i].Rid)}:{lmHash}:{users[i].NtHistory[j]}:::");
+
+                                if (j < users[i].NtHistory.Length || i < users.Length - 1)
+                                {
+                                    file.Write(Environment.NewLine);
+                                }
+                            }
+                        }
+
+
+                    }
+                }
+            }
+
+            if (users.Any(x => !string.IsNullOrEmpty(x.ClearTextPassword)) && !string.IsNullOrWhiteSpace(dumpReversiblePath))
+            {
+                using (var file = new StreamWriter(dumpReversiblePath, false))
+                {
+                    var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
+                    for (var i = 0; i < users.Length; i++)
+                    {
+                        string userId;
+
+                        if (anonymise)
+                        {
+                            var bytes = new byte[16];
+                            r.NextBytes(bytes);
+                            userId = new Guid(bytes).ToString();
+                        }
+                        else if (useRdn)
+                        {
+                            userId = users[i].Name;
+                        }
+                        else
+                        {
+                            userId = users[i].SamAccountName;
+                        }
+
+                        if (!string.IsNullOrEmpty(users[i].ClearTextPassword))
+                        {
+                            file.Write($"{domain.Fqdn}\\{userId}:{users[i].ClearTextPassword}");
+
+                            if (i < users.Length - 1)
+                            {
+                                file.Write(Environment.NewLine);
+                            }
                         }
                     }
                 }
             }
+        }
+        else
+        {
+            ConsoleEx.WriteError($"Error extracting domain information from NTDS.dit file");
         }
     }
 
