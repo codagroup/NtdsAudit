@@ -8,6 +8,7 @@
     using System.Globalization;
     using System.IO;
     using System.Linq;
+    using System.Runtime.Serialization;
     using System.Text;
     using System.Text.RegularExpressions;
 
@@ -20,7 +21,7 @@
         private const string LINKTABLE = "link_table";
         private const string MSYSOBJECTS = "MSysObjects";
         private readonly DatatableRow[] _datatable;
-        private readonly IReadOnlyDictionary<string, string> _ldapDisplayNameToDatatableColumnNameDictionary;
+        private readonly ReadOnlyDictionary<string, string> _ldapDisplayNameToDatatableColumnNameDictionary;
         private readonly LinkTableRow[] _linkTable;
         private readonly MSysObjectsRow[] _mSysObjects;
         private readonly bool _useOUFilter;
@@ -164,7 +165,7 @@
             return hex.Replace("-", string.Empty);
         }
 
-        private static DatatableRow[] EnumerateDatatableTable(JetDb db, IReadOnlyDictionary<string, string> ldapDisplayNameToDatatableColumnNameDictionary, bool dumpHashes, bool includeHistoryHashes, ref ProgressBar? progress)
+        private static DatatableRow[] EnumerateDatatableTable(JetDb db, ReadOnlyDictionary<string, string> ldapDisplayNameToDatatableColumnNameDictionary, bool dumpHashes, bool includeHistoryHashes, ref ProgressBar? progress)
         {
             Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
@@ -343,14 +344,11 @@
                     ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                 }
             }
-            if (progress is not null)
-            {
-                progress.Report(32 / (double)100);
-            }
+            progress?.Report(32 / (double)100);
             return [.. datatable];
         }
 
-        private static IReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects, ref ProgressBar? progress)
+        private static ReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects, ref ProgressBar? progress)
         {
             Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
@@ -400,10 +398,7 @@
                     ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                 }
             }
-            if (progress is not null)
-            {
-                progress.Report(24 / (double)100);
-            }
+            progress?.Report(24 / (double)100);
             return new ReadOnlyDictionary<string, string>(ldapDisplayNameToColumnNameDictionary);
         }
 
@@ -443,8 +438,8 @@
 
                     linktable.Add(new LinkTableRow
                     {
-                        LinkDnt = linkDntColumn.Value.HasValue ? linkDntColumn.Value.Value : -1,
-                        BacklinkDnt = backlinkDnt.Value.HasValue ? backlinkDnt.Value.Value : -1
+                        LinkDnt = linkDntColumn.Value ?? -1,
+                        BacklinkDnt = backlinkDnt.Value ?? -1
                     });
                 }
 
@@ -458,10 +453,7 @@
                         ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                     }
                 }
-                if (progress is not null)
-                {
-                    progress.Report(16 / (double)100);
-                }
+                progress?.Report(16 / (double)100);
                 return [.. linktable];
             }
         }
@@ -509,14 +501,11 @@
                     ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                 }
             }
-            if (progress is not null) 
-            {
-                progress.Report(8 / (double)100);
-            }
+            progress?.Report(8 / (double)100);
             return [.. mSysObjects];
         }
 
-        private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value, ref ProgressBar? progress)
+        private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value)
         {
             // https://msdn.microsoft.com/en-us/library/ms675098(v=vs.85).aspx
             if (value == null)
@@ -600,10 +589,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(96 / (double)100);
-            }
+            progress?.Report(96 / (double)100);
             return [.. computers];
         }
 
@@ -682,10 +668,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(48 / (double)100);
-            }
+            progress?.Report(48 / (double)100);
         }
 
         private DomainInfo[] CalculateDomainInfo(ref ProgressBar? progress)
@@ -723,10 +706,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(64 / (double)100);
-            }
+            progress?.Report(64 / (double)100);
             return [.. domains];
         }
 
@@ -779,10 +759,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(100 / (double)100);
-            }
+            progress?.Report(100 / (double)100);
         }
 
         private void CalculateObjectCategoryStringForDatableRows(ref ProgressBar? progress)
@@ -812,10 +789,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(56 / (double)100);
-            }
+            progress?.Report(56 / (double)100);
         }
 
         private void CalculateRecursiveGroupMembership(GroupInfo group, HashSet<int> recursiveMembersDnts, ref ProgressBar? progress)
@@ -863,7 +837,7 @@
                             Name = row.Name,
                             Dn = row.Dn,
                             DomainSid = row.Sid.AccountDomainSid ?? new MockSid(MockSidType.NullSid,row.Sid.AccountDomainSid),
-                            Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
+                            Dnt = row.Dnt ?? -1,
                             Sid = row.Sid,
                         };
                         groups.Add(groupInfo);
@@ -880,10 +854,7 @@
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
 
-            if (progress is not null)
-            {
-                progress.Report(88 / (double)100);
-            }
+            progress?.Report(88 / (double)100);
 
             return [.. groups];
         }
@@ -910,7 +881,7 @@
                     }
                     var userInfo = new UserInfo
                     {
-                        Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
+                        Dnt = row.Dnt ?? -1,
                         Name = row.Name,
                         Dn = row.Dn,
                         DomainSid = row.Sid.AccountDomainSid ?? new MockSid(MockSidType.NullSid, row.Sid.AccountDomainSid),
@@ -918,7 +889,7 @@
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         PasswordNotRequired = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD) == (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD,
                         PasswordNeverExpires = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_DONT_EXPIRE_PASSWD) == (int)ADS_USER_FLAG.ADS_UF_DONT_EXPIRE_PASSWD,
-                        Expires = GetAccountExpiresDateTimeFromByteArray(row.AccountExpires, ref progress),
+                        Expires = GetAccountExpiresDateTimeFromByteArray(row.AccountExpires),
                         PasswordLastChanged = row.LastPasswordChange ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         SamAccountName = row.SamAccountName,
                         Rid = row.Rid,
@@ -943,10 +914,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(72 / (double)100);
-            }
+            progress?.Report(72 / (double)100);
             return [.. users];
         }
 
@@ -973,10 +941,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(80 / (double)100);
-            }
+            progress?.Report(80 / (double)100);
         }
 
         private void DecryptSecretData(string systemKeyPath, bool includeHistoryHashes, ref ProgressBar? progress)
@@ -1126,10 +1091,7 @@
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
 
-            if (progress is not null)
-            {
-                progress.Report(40 / (double)100);
-            }
+            progress?.Report(40 / (double)100);
         }
     }
 }

@@ -100,11 +100,7 @@ public static class Program
 
             if (result.GetValue(computersCsvPath) is not null)
             {
-                WriteComputersCsvFile(
-                    result.GetValue(computersCsvPath)!.FullName,
-                    ntds,
-                    result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(),DateTimeKind.Utc)
-                );
+                WriteComputersCsvFile(result.GetValue(computersCsvPath)!.FullName, ntds);
             }
         }
         return result.Invoke();
@@ -172,7 +168,7 @@ public static class Program
             Console.WriteLine();
         }
     }
-    private static void WriteComputersCsvFile(string computersCsvPath, NtdsAuditor ntdsAudit, DateTime baseDateTime)
+    private static void WriteComputersCsvFile(string computersCsvPath, NtdsAuditor ntdsAudit)
     {
         using (var file = new StreamWriter(computersCsvPath, false))
         {
