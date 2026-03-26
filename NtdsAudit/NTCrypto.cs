@@ -451,7 +451,6 @@
             return keys;
         }
 
-#pragma warning disable SA1008
 
         private static (byte[] key1, byte[] key2) RidToKeys(uint rid)
         {
@@ -476,8 +475,6 @@
 
             return (StrToKey(s1), StrToKey(s2));
         }
-
-#pragma warning restore SA1008
 
         private static byte[] StrToKey(char[] str)
         {
