@@ -10,7 +10,9 @@ public static class Program
     #region Constructors
     public static int Main(string[] args)
     {
+#pragma warning disable IDE0028 // Simplify collection initialization
         RootCommand cmd = new("A utility for auditing Active Directory");
+#pragma warning restore IDE0028 // Simplify collection initialization
         Argument<FileInfo> ntdsPath = new("NTDS file") { Description = "The path of the NTDS.dit database to be audited, required." };
         Option<FileInfo> systemHivePath = new("-s", "--system") { Description = "The path of the associated SYSTEM hive. Required when using the pwdump option.", Arity = ArgumentArity.ExactlyOne, HelpName = "path" };
         Option<FileInfo> pwdumpPath = new("-p", "--pwdump") { Description = "The path to output hashes in pwdump format.", Arity = ArgumentArity.ExactlyOne, HelpName = "path" };
@@ -236,7 +238,7 @@ public static class Program
             {
                 if (anonymise)
                 {
-                    StreamWriter mapFile = new StreamWriter($"{pwdumpPath}.map", false);
+                    StreamWriter mapFile = new($"{pwdumpPath}.map", false);
                     var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
                     for (var i = 0; i < users.Length; i++)
                     {

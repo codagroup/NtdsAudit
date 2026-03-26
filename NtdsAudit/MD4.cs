@@ -50,7 +50,7 @@
             {
                 ProcessMessage(Padding());
 
-                return new[] { _a, _b, _c, _d }.SelectMany(word => Bytes(word)).ToArray();
+                return [.. new[] { _a, _b, _c, _d }.SelectMany(word => Bytes(word))];
             }
             finally
             {

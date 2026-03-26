@@ -12,7 +12,7 @@
     /// </summary>
     internal static class SystemHive
     {
-        private static readonly byte[] SYSTEMKEYTRANSFORMS = new byte[] { 8, 5, 4, 2, 11, 9, 13, 3, 0, 6, 1, 12, 14, 10, 15, 7 };
+        private static readonly byte[] SYSTEMKEYTRANSFORMS = [8, 5, 4, 2, 11, 9, 13, 3, 0, 6, 1, 12, 14, 10, 15, 7];
 
         /// <summary>
         /// Extracts the system key from a SYSTEM registry hive.
@@ -41,7 +41,7 @@
                     if (key is not null)
                     {
                         var className = key.ClassName;
-                        scrambledKeyList.AddRange(Enumerable.Range(0, className.Length / 2).Select(x => Convert.ToByte(className.Substring(x * 2, 2), 16)).ToArray());
+                        scrambledKeyList.AddRange([.. Enumerable.Range(0, className.Length / 2).Select(x => Convert.ToByte(className.Substring(x * 2, 2), 16))]);
                     }
                 }
 
@@ -53,7 +53,7 @@
                     systemKeyList.Add(scrambledKey[SYSTEMKEYTRANSFORMS[i]]);
                 }
             }
-            return systemKeyList.ToArray();
+            return [.. systemKeyList];
         }
     }
 }

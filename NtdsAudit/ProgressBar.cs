@@ -14,7 +14,7 @@
         private const string Animation = @"|/-\";
         private const int BlockCount = 10;
         private readonly TimeSpan _animationInterval = TimeSpan.FromSeconds(1.0 / 8);
-        private readonly object _lock = new object();
+        private readonly object _lock = new();
         private readonly string _text;
         private readonly Timer _timer;
         private int _animationIndex = 0;
@@ -131,7 +131,7 @@
             }
 
             // Backtrack to the first differing character
-            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new();
             outputBuilder.Append('\b', _currentText.Length - commonPrefixLength);
 
             // Output new suffix

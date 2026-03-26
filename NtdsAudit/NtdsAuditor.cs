@@ -245,7 +245,7 @@
                         }
                     }
 
-                    table.RetrieveColumns(columns.ToArray());
+                    table.RetrieveColumns([.. columns]);
 
                     // Skip deleted objects
                     if (isDeletedColumn.Value.HasValue && isDeletedColumn.Value != 0)
@@ -267,7 +267,7 @@
                     {
                         var sidBytes = objectSidColumn.Value;
                         var ridBytes = sidBytes.Skip(sidBytes.Length - sizeof(int)).Take(sizeof(int)).Reverse().ToArray();
-                        sidBytes = sidBytes.Take(sidBytes.Length - sizeof(int)).Concat(ridBytes).ToArray();
+                        sidBytes = [.. sidBytes.Take(sidBytes.Length - sizeof(int)).Concat(ridBytes)];
                         rid = BitConverter.ToUInt32(ridBytes, 0);
                         sid = new MockSid(sidBytes, 0);
                     }
@@ -347,7 +347,7 @@
             {
                 progress.Report(32 / (double)100);
             }
-            return datatable.ToArray();
+            return [.. datatable];
         }
 
         private static IReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects, ref ProgressBar? progress)
@@ -462,7 +462,7 @@
                 {
                     progress.Report(16 / (double)100);
                 }
-                return linktable.ToArray();
+                return [.. linktable];
             }
         }
 
@@ -513,7 +513,7 @@
             {
                 progress.Report(8 / (double)100);
             }
-            return mSysObjects.ToArray();
+            return [.. mSysObjects];
         }
 
         private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value, ref ProgressBar? progress)
@@ -604,7 +604,7 @@
             {
                 progress.Report(96 / (double)100);
             }
-            return computers.ToArray();
+            return [.. computers];
         }
 
         private void CalculateDnsForDatatableRows(ref ProgressBar? progress)
@@ -727,7 +727,7 @@
             {
                 progress.Report(64 / (double)100);
             }
-            return domains.ToArray();
+            return [.. domains];
         }
 
         private void CalculateGroupMembership(ref ProgressBar? progress)
@@ -752,13 +752,11 @@
                 // If the group DNT is not in the link dictionary, then no relevant group members were found
                 if (!linkDictionary.ContainsKey(group.Dnt))
                 {
-                    group.MembersDnts = new int[] { };
+                    group.MembersDnts = [];
                 }
                 else
                 {
-                    group.MembersDnts = linkDictionary[group.Dnt]
-                        .Where(x => x != group.Dnt && (dntToObjectCategoryDictionary.ContainsKey(x) && (dntToObjectCategoryDictionary[x] == "Group" || dntToObjectCategoryDictionary[x] == "Builtin" || dntToObjectCategoryDictionary[x] == "Person")))
-                        .ToArray();
+                    group.MembersDnts = [.. linkDictionary[group.Dnt].Where(x => x != group.Dnt && (dntToObjectCategoryDictionary.ContainsKey(x) && (dntToObjectCategoryDictionary[x] == "Group" || dntToObjectCategoryDictionary[x] == "Builtin" || dntToObjectCategoryDictionary[x] == "Person")))];
                 }
             }
 
@@ -767,13 +765,13 @@
             {
                 var recursiveMembersDnts = new HashSet<int>();
                 CalculateRecursiveGroupMembership(group, recursiveMembersDnts, ref progress);
-                group.RecursiveMembersDnts = recursiveMembersDnts.ToArray();
+                group.RecursiveMembersDnts = [.. recursiveMembersDnts];
             }
 
             // Loop over each user and add group sids
             foreach (var user in Users)
             {
-                user.RecursiveGroupSids = Groups.Where(x => x.RecursiveMembersDnts.Contains(user.Dnt)).Select(x => x.Sid).ToArray();
+                user.RecursiveGroupSids = [.. Groups.Where(x => x.RecursiveMembersDnts.Contains(user.Dnt)).Select(x => x.Sid)];
             }
 
             if (ShowDebugOutput && stopwatch is not null)
@@ -887,7 +885,7 @@
                 progress.Report(88 / (double)100);
             }
 
-            return groups.ToArray();
+            return [.. groups];
         }
 
         private UserInfo[] CalculateUserInfo(ref ProgressBar? progress)
@@ -949,7 +947,7 @@
             {
                 progress.Report(72 / (double)100);
             }
-            return users.ToArray();
+            return [.. users];
         }
 
         private void CheckUsersForWeakPasswords(Dictionary<string, string> ntlmHashToPasswordDictionary, ref ProgressBar? progress)
@@ -1048,7 +1046,7 @@
                         {
                             var hashStrings = new List<string>();
 
-                            var decryptedHashes = new byte[0];
+                            var decryptedHashes = Array.Empty<byte>();
                             try
                             {
                                 decryptedHashes = NTCrypto.DecryptHashes(decryptedPekList, row.EncryptedLmHistory, row.Rid);
@@ -1071,18 +1069,18 @@
                                 }
                                 else
                                 {
-                                    hashStrings.Add(ByteArrayToHexString(decryptedHashes.Skip(i).Take(16).ToArray()));
+                                    hashStrings.Add(ByteArrayToHexString([.. decryptedHashes.Skip(i).Take(16)]));
                                 }
                             }
 
-                            row.LmHistory = hashStrings.ToArray();
+                            row.LmHistory = [.. hashStrings];
                         }
 
                         if (row.EncryptedNtHistory != null)
                         {
                             var hashStrings = new List<string>();
 
-                            var decryptedHashes = new byte[0];
+                            var decryptedHashes = Array.Empty<byte>();
                             try
                             {
                                 decryptedHashes = NTCrypto.DecryptHashes(decryptedPekList, row.EncryptedNtHistory, row.Rid);
@@ -1098,10 +1096,10 @@
                             // The first hash is the same as the current hash, so skip it
                             for (var i = 16; i < decryptedHashes.Length; i += 16)
                             {
-                                hashStrings.Add(ByteArrayToHexString(decryptedHashes.Skip(i).Take(16).ToArray()));
+                                hashStrings.Add(ByteArrayToHexString([.. decryptedHashes.Skip(i).Take(16)]));
                             }
 
-                            row.NtHistory = hashStrings.ToArray();
+                            row.NtHistory = [.. hashStrings];
                         }
                     }
 

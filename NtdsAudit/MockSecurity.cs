@@ -34,7 +34,7 @@
             }
         }
         // Can't create variable well-known SIDs (IDs 38-50) as they depend on the domain.
-        public readonly static WKSID[] WellKnownSids = {
+        public readonly static WKSID[] WellKnownSids = [
             new(['0', '0'], MockSidType.NullSid, new MAX_SID(SID_REVISION, 0, MockAuthority.NullAuthority, [(ulong)MockRid.NullRid])),
             new(['W', 'D'], MockSidType.WorldSid, new MAX_SID(SID_REVISION, 1, MockAuthority.WorldAuthority, [(ulong)MockRid.WorldRid])),
             new(['0', '0'], MockSidType.LocalSid, new MAX_SID(SID_REVISION, 1, MockAuthority.LocalAuthority, [(ulong)MockRid.LocalRid])),
@@ -133,7 +133,7 @@
                 WinCapabilityEnterpriseAuthenticationSid = 93,
                 WinCapabilityRemovableStorageSid = 94
              */
-        };  
+        ];  
         public static int Length { get { return WellKnownSids.Length; } }
     }
 }

@@ -329,7 +329,7 @@ namespace CODA.NtdsAudit
                 if (_binaryForm.Length < 8 + (subAuthorityCount * 4)) { throw new ArgumentException("Binary array is too short for the specified sub-authority count."); }
 
                 // Start building the string: S-Rev-Auth
-                StringBuilder sb = new StringBuilder($"S-{Revision}-{(byte)_authority}");
+                StringBuilder sb = new($"S-{Revision}-{(byte)_authority}");
 
                 if (subAuthorityCount == 0)
                 {

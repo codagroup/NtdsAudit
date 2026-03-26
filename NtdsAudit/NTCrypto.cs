@@ -106,11 +106,11 @@
             for (var i = 0; i < decryptedData.Length; i += 16)
             {
                 (var key1, var key2) = RidToKeys(rid);
-                var decryptedHash = DecryptDataWithKeyPair(key1, key2, decryptedData.Skip(i).Take(16).ToArray());
+                var decryptedHash = DecryptDataWithKeyPair(key1, key2, [.. decryptedData.Skip(i).Take(16)]);
                 decryptedHashes.AddRange(decryptedHash);
             }
 
-            return decryptedHashes.ToArray();
+            return [.. decryptedHashes];
         }
 
         /// <summary>
@@ -156,7 +156,7 @@
                         case PekListVersion.Windows2000:
                             return ParsePekList(DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000));
                         case PekListVersion.Windows2016:
-                            return ParsePekList(DecryptDataUsingAes(systemKey, salt, encryptedPekList).ToArray());
+                            return ParsePekList([.. DecryptDataUsingAes(systemKey, salt, encryptedPekList)]);
                         default:
                             throw new ArgumentException("Invalid Pek List");
                     }
@@ -197,8 +197,8 @@
                 case EncryptionType.PekWithAes:
                     // When using AES, data is padded and the first 4 bytes contains the actual data length
                     var length = BitConverter.ToUInt32(encryptedData, 0);
-                    encryptedData = encryptedData.Skip(4).ToArray();
-                    return DecryptDataUsingAes(pek, salt, encryptedData).Take((int)length).ToArray();
+                    encryptedData = [.. encryptedData.Skip(4)];
+                    return [.. DecryptDataUsingAes(pek, salt, encryptedData).Take((int)length)];
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(encryptedBlob), Invariant($"Encryption type \"{(EncryptionType)algorithm}\" is not supported."));
@@ -435,7 +435,7 @@
             NativeMethods.CryptDestroyKey(hKey1);
             NativeMethods.CryptReleaseContext(hProv, 0);
 
-            return data1.Concat(data2).ToArray();
+            return [.. data1, .. data2];
         }
 
         /// <summary>
