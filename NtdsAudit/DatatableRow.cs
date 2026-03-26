@@ -3,7 +3,6 @@
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Security.Principal;
 
     /// <summary>
     /// Provides information extracted from NTDS in relation to a row of the datatable.

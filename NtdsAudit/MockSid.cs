@@ -1,12 +1,5 @@
-﻿using Microsoft.Isam.Esent.Interop;
-using System;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Security.Principal;
-using System.Text.RegularExpressions;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace CODA.NtdsAudit
 {
@@ -46,7 +39,7 @@ namespace CODA.NtdsAudit
         {
             ArgumentNullException.ThrowIfNull(sddlForm, nameof(sddlForm));
             byte[]? sidBinary = CreateSidFromString(sddlForm);
-            CreateFromBinaryForm(_binaryForm!, 0);
+            CreateFromBinaryForm(sidBinary!, 0);
         }
         public MockSid(byte[] binaryForm, int offset)
         {
@@ -61,19 +54,10 @@ namespace CODA.NtdsAudit
                 throw new ArgumentException($"Cannot create a Logon SID.", nameof(sidType));
             }
 
-            // sidType should not exceed the max defined value
-            if ((sidType < MockSidType.NullSid) || (sidType > MockSidType.WinCapabilityRemovableStorageSid))
+            // For some sidTypes, the domainSid parameter must be specified. no other validation is performed.
+            if (IsDomainSid(sidType) && domainSid is null)
             {
-                throw new ArgumentException($"An invalid sid type was provided: {sidType.ToString()}", nameof(sidType));
-            }
-            
-            // For sidType between 38 to 50, the domainSid parameter must be specified. no other validation is performed.
-            if ((sidType >= MockSidType.AccountAdministratorSid) && (sidType <= MockSidType.AccountRasAndIasServersSid))
-            {
-                if (domainSid == null)
-                {
-                    throw new ArgumentNullException(nameof(domainSid), $"When sidType is {sidType.ToString()} domainSid cannot be null");
-                }
+                throw new ArgumentNullException(nameof(domainSid), $"When sidType is {sidType.ToString()} domainSid cannot be null");
             }
             byte[]? binarySid = CreateWellKnownSid(sidType, domainSid);
             CreateFromBinaryForm(binarySid!, 0);
@@ -84,6 +68,31 @@ namespace CODA.NtdsAudit
         }
         #endregion
         #region Functions
+        private bool IsDomainSid(MockSidType sidType)
+        {
+            switch (sidType)
+            {
+                case MockSidType.DomainAdministratorSid:
+                case MockSidType.DomainGuestSid:
+                case MockSidType.DomainKrbtgtSid:
+                case MockSidType.DomainAdminsSid:
+                case MockSidType.DomainUsersSid:
+                case MockSidType.DomainGuestsSid:
+                case MockSidType.DomainComputersSid:
+                case MockSidType.DomainControllersSid:
+                case MockSidType.DomainCertAdminsSid:
+                case MockSidType.SchemaAdminsSid:
+                case MockSidType.EnterpriseAdminsSid:
+                case MockSidType.DomainPolicyAdminsSid:
+                case MockSidType.DomainRasAndIasServersSid:
+                case MockSidType.WinEnterpriseReadonlyControllersSid:
+                case MockSidType.WinDomainReadonlyControllersSid:
+                case MockSidType.WinEnterpriseReadonlyControllerSid:
+                    return true;
+                default:
+                    return false;
+            }
+        }
         private void CreateFromBinaryForm(byte[] binaryForm, int offset)
         {
             ArgumentNullException.ThrowIfNull(binaryForm);
@@ -107,7 +116,7 @@ namespace CODA.NtdsAudit
             }
             // Make sure the buffer is big enough
 
-            int totalLength = 1 + 1 + 6 + 4 * subAuthoritiesLength;
+            int totalLength = (4 * subAuthoritiesLength) + 8;
             if (binaryForm.Length - offset < totalLength)
             {
                 throw new ArgumentException($"Buffer too small: {binaryForm.Length - offset}", nameof(binaryForm));
@@ -135,11 +144,7 @@ namespace CODA.NtdsAudit
                 );
             }
 
-            CreateFromParts(
-                authority,
-                subAuthorities[..subAuthoritiesLength]
-            );
-
+            CreateFromParts(authority, subAuthorities[..subAuthoritiesLength]);
             return;
         }
         private void CreateFromParts(MockAuthority authority, ReadOnlySpan<int> subAuthorities)
@@ -187,7 +192,7 @@ namespace CODA.NtdsAudit
             // } SID, *PISID;
             //
             
-            _binaryForm = new byte[1 + 1 + 6 + 4 * _subAuthorities.Length];
+            _binaryForm = new byte[(4 * _subAuthorities.Length) + 8];
             
             //
             // First two bytes contain revision and subauthority count
@@ -216,6 +221,8 @@ namespace CODA.NtdsAudit
                     _binaryForm[8 + 4 * i + shift] = unchecked((byte)(((ulong)_subAuthorities[i]) >> (shift * 8)));
                 }
             }
+
+            UpdateSddlForm();
         }
         internal MockSid? GetAccountDomainSid()
         {
@@ -229,96 +236,139 @@ namespace CODA.NtdsAudit
         //TODO: This can be more efficient
         internal byte[]? CreateSidFromString(string sddlForm)
         {
-            byte[]? binaryForm = null;
-            if (sddlForm.ToUpperInvariant().StartsWith("S") && sddlForm.Length >= MinBinaryLength)
+            if (string.IsNullOrEmpty(sddlForm)) throw new ArgumentException("SID cannot be null");
+
+            string[] parts = sddlForm.Split('-');
+            if (parts[0] != "S" || parts.Length < 3) { throw new FormatException("Invalid SID format."); }
+
+            byte revision = byte.Parse(parts[1]);
+            UInt64 authority = UInt64.Parse(parts[2]);
+            int subAuthorityCount = parts.Length - 3;
+
+            // Total Size: 1 (Rev) + 1 (Count) + 6 (Auth) + (SubCount * 4)
+            byte[] binarySid = new byte[8 + (subAuthorityCount * 4)];
+
+            // 1. Set Revision
+            binarySid[0] = revision;
+
+            // 2. Set Sub-Authority Count
+            binarySid[1] = (byte)subAuthorityCount;
+
+            // 3. Set Identifier Authority (6 bytes, Big-Endian)
+            for (int i = 0; i < 6; i++)
             {
-                string[] sddlParts = sddlForm.Split('-');
-                List<byte> byteParts = new List<byte>();
-                if (sddlParts.Length >= MinBinaryLength/2)
-                {
-                    for (int i = 1; i < sddlParts.Length; i++) //Ignore the "S" string
-                    {
-                        uint u = 0;
-                        bool result = uint.TryParse(sddlParts[i], out u);
-                        if (!result)
-                        {
-                            throw new ArgumentException($"Invalid SID: {sddlForm}");
-                        }
-                        else
-                        {
-                            switch(i)
-                            {
-                                case 1: //Revision part (1 byte, generally equals "1", but could in theory be anything)
-                                    if (u <= byte.MaxValue)
-                                    {
-                                        byteParts.Add((byte)u);
-                                    }
-                                    else
-                                    {
-                                        throw new ArgumentException($"Invalid SID: {sddlForm}");
-                                    }
-                                    break;
-                                case 2: //Number of fields (1 byte then 6 bytes - varies, but typically equals "5")
-                                    if (u <= byte.MaxValue)
-                                    {
-                                        for (int j = 0; j < 7; j++)
-                                        {
-                                            if (j == 0 || j == 6)
-                                            {
-                                                byteParts.Add((byte)u);
-                                            }
-                                            else
-                                            {
-                                                byteParts.Add(0);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        throw new ArgumentException($"Invalid SID: {sddlForm}");
-                                    }
-                                break;
-                                default: //All other sections are little-endian.
-                                    byte[] b = BitConverter.GetBytes(u);
-                                    if (!BitConverter.IsLittleEndian)
-                                    {
-                                        Array.Reverse(b);
-                                    }
-                                    byteParts.AddRange(b);
-                                break;
-                            }
-                        }
-                    }
-                    binaryForm = byteParts.ToArray();
-                }
-                else
-                {
-                    throw new ArgumentException($"SID not long enough: {sddlForm} is shorter than {MinBinaryLength / 2}");
-                }
+                binarySid[2 + i] = (byte)((authority >> (8 * (5 - i))) & 0xFF);
             }
-            return binaryForm;
+
+            // 4. Set Sub-Authorities (4 bytes each, Little-Endian)
+            for (int i = 0; i < subAuthorityCount; i++)
+            {
+                uint subAuth = uint.Parse(parts[3 + i]);
+                byte[] subAuthBytes = BitConverter.GetBytes(subAuth);
+
+                // Ensure Little-Endian (Windows standard)
+                if (!BitConverter.IsLittleEndian) Array.Reverse(subAuthBytes);
+
+                Buffer.BlockCopy(subAuthBytes, 0, binarySid, 8 + (i * 4), 4);
+            }
+
+            return binarySid;
         }
         // Barely any error checking here.....
         internal byte[]? CreateWellKnownSid(MockSidType mockSidType, MockSid? domainSid)
         {
-            //TODO: Figure out this bit
-            /*if (MockSecurity.WellKnownSids.Any(sid => sid.SidType == mockSidType) && 
-                (domainSid is null || domainSid._subAuthorities.Count() <= MaxSubAuthorities)
-            )
+            //If the SID to be generated is on the pre-defined list and either the domain is null (i.e. it's a local SID) or the domain SID is valid:
+            if (MockSecurity.WellKnownSids.Any(sid => sid.SidType == mockSidType) && (domainSid is null || domainSid.SubAuthorities.Length <= MaxSubAuthorities))
             {
-                
-                
+                MockSecurity.WKSID wkSID = MockSecurity.WellKnownSids.First(sid => sid.SidType == mockSidType);
+                if (domainSid is null)
+                {
+                    byte size = (byte)((wkSID.Sid.SubAuthorityCount * 4) + 8);
+                    byte[] sidBytes = new byte[size];
+                    sidBytes[0] = wkSID.Sid.Revision;
+                    sidBytes[1] = wkSID.Sid.SubAuthorityCount;
+                    sidBytes[7] = (byte)wkSID.Sid.Authority;
+
+                    for (int i = 0; i < wkSID.Sid.SubAuthorityCount; i++)
+                    {
+                        byte[] subAuthBytes = BitConverter.GetBytes(wkSID.Sid.SubAuthority[i]);
+                        if (!BitConverter.IsLittleEndian) Array.Reverse(subAuthBytes);
+
+                        Array.Copy(subAuthBytes, 0, sidBytes, 8 + (i * 4), 4);
+                    }
+                    return sidBytes;
+                }
+                else
+                {
+                    byte size = (byte)((domainSid.SubAuthorities.Length * 4) + 8);
+                    byte[] sidBytes = new byte[size];
+                    sidBytes[0] = wkSID.Sid.Revision;
+                    sidBytes[1] = (byte)domainSid.SubAuthorities.Length;
+                    sidBytes[7] = (byte)domainSid.Authority;
+
+                    for (int i = 0; i < domainSid.SubAuthorities.Length; i++)
+                    {
+                        byte[] subAuthBytes = BitConverter.GetBytes(domainSid.SubAuthorities[i]);
+                        if (!BitConverter.IsLittleEndian) Array.Reverse(subAuthBytes);
+
+                        Array.Copy(subAuthBytes, 0, sidBytes, 8 + (i * 4), 4);
+                    }
+                    return sidBytes;
+                }
             }
             else return null;
-            */
+        }
+        internal void UpdateSddlForm()
+        {
+            if (_binaryForm is not null && _binaryForm.Length >= 8)
+            {
+                // Get Sub-Authority Count (Byte 1)
+                byte subAuthorityCount = _binaryForm[1];
 
-            throw new NotImplementedException("CreateWellKnownSid");
+                // Validate that the array is long enough for the claimed sub-authorities
+                if (_binaryForm.Length < 8 + (subAuthorityCount * 4)) { throw new ArgumentException("Binary array is too short for the specified sub-authority count."); }
+
+                // Start building the string: S-Rev-Auth
+                StringBuilder sb = new StringBuilder($"S-{Revision}-{(byte)_authority}");
+
+                if (subAuthorityCount == 0)
+                {
+                    sb.Append($"-0");
+                }
+                else
+                {
+                    // Get Sub-Authorities (4 bytes each, Little-Endian)
+                    for (int i = 0; i < subAuthorityCount; i++)
+                    {
+                        int offset = 8 + (i * 4);
+                        uint subAuth = BitConverter.ToUInt32(_binaryForm, offset);
+
+                        // Handle Big-Endian systems
+                        if (!BitConverter.IsLittleEndian)
+                        {
+                            byte[] bytes = BitConverter.GetBytes(subAuth);
+                            Array.Reverse(bytes);
+                            subAuth = BitConverter.ToUInt32(bytes, 0);
+                        }
+
+                        sb.Append($"-{subAuth}");
+                    }
+                }
+                SddlForm = sb.ToString();
+            }
+            else
+            {
+                throw new ArgumentException($"Invalid Binary SID");
+            }
         }
         #endregion
         #region Properties
         public static byte Revision { get; private set; } = 1; //This is usually 1, but sometimes 0 or 2 because reasons.
         public static readonly int MinBinaryLength = 8;
-        public string SddlForm { get; private set; }
+        public string SddlForm 
+        {
+            get; private set; 
+        }
         public string Value { get { return SddlForm.ToUpperInvariant(); } }
         public MockSid? AccountDomainSid { get {
                 if (_accountDomainSid is null)
@@ -328,6 +378,8 @@ namespace CODA.NtdsAudit
                 return _accountDomainSid;
             } }
         public int BinaryLength { get { return _binaryForm.Length; } }
+        public MockAuthority Authority {  get { return _authority;} }
+        public int[] SubAuthorities { get { return _subAuthorities; } }
         #endregion
         #region Overrides
         public override bool Equals([NotNullWhen(true)] object? obj)

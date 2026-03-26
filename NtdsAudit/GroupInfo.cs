@@ -1,7 +1,6 @@
 ﻿namespace CODA.NtdsAudit
 {
     using System.Diagnostics;
-    using System.Security.Principal;
 
     /// <summary>
     /// Provides information extracted from NTDS in relation to a group.

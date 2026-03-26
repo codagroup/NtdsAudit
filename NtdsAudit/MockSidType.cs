@@ -6,6 +6,7 @@ namespace CODA.NtdsAudit
 {
     /// <summary>
     /// Structural replica of the System.Security.Principal.Windows.WellKnownSidType class, but without all the Windows-specific logic attached.
+    /// TODO: Consider adding descripter to indicate whether static or dynamic SID
     /// </summary>
     public enum MockSidType
     {
@@ -61,7 +62,7 @@ namespace CODA.NtdsAudit
         NetworkServiceSid = 24,
         /// <summary>Indicates a SID that matches the domain account.</summary>
         BuiltinDomainSid = 25,
-        /// <summary>Indicates a SID that matches the administrator group.</summary>
+        /// <summary>Indicates a SID that matches the administrators group.</summary>
         BuiltinAdministratorsSid = 26,
         /// <summary>Indicates a SID that matches built-in user accounts.</summary>
         BuiltinUsersSid = 27,
@@ -85,32 +86,32 @@ namespace CODA.NtdsAudit
         BuiltinRemoteDesktopUsersSid = 36,
         /// <summary>Indicates a SID that matches the network operators group.</summary>
         BuiltinNetworkConfigurationOperatorsSid = 37,
-        /// <summary>Indicates a SID that matches the account administrator's account.</summary>
-        AccountAdministratorSid = 38,
-        /// <summary>Indicates a SID that matches the account guest group.</summary>
-        AccountGuestSid = 39,
-        /// <summary>Indicates a SID that matches account Kerberos target group.</summary>
-        AccountKrbtgtSid = 40,
-        /// <summary>Indicates a SID that matches the account domain administrator group.</summary>
-        AccountDomainAdminsSid = 41,
-        /// <summary>Indicates a SID that matches the account domain users group.</summary>
-        AccountDomainUsersSid = 42,
-        /// <summary>Indicates a SID that matches the account domain guests group.</summary>
-        AccountDomainGuestsSid = 43,
-        /// <summary>Indicates a SID that matches the account computer group.</summary>
-        AccountComputersSid = 44,
-        /// <summary>Indicates a SID that matches the account controller group.</summary>
-        AccountControllersSid = 45,
+        /// <summary>Indicates a SID that matches the domain administrator account.</summary>
+        DomainAdministratorSid = 38,
+        /// <summary>Indicates a SID that matches the domain guest account.</summary>
+        DomainGuestSid = 39,
+        /// <summary>Indicates a SID that matches Kerberos account.</summary>
+        DomainKrbtgtSid = 40,
+        /// <summary>Indicates a SID that matches the domain admins group.</summary>
+        DomainAdminsSid = 41,
+        /// <summary>Indicates a SID that matches the domain users group.</summary>
+        DomainUsersSid = 42,
+        /// <summary>Indicates a SID that matches the domain guests group.</summary>
+        DomainGuestsSid = 43,
+        /// <summary>Indicates a SID that matches the domain computers group.</summary>
+        DomainComputersSid = 44,
+        /// <summary>Indicates a SID that matches the domain controllers group.</summary>
+        DomainControllersSid = 45,
         /// <summary>Indicates a SID that matches the certificate administrators group.</summary>
-        AccountCertAdminsSid = 46,
+        DomainCertAdminsSid = 46,
         /// <summary>Indicates a SID that matches the schema administrators group.</summary>
-        AccountSchemaAdminsSid = 47,
+        SchemaAdminsSid = 47,
         /// <summary>Indicates a SID that matches the enterprise administrators group.</summary>
-        AccountEnterpriseAdminsSid = 48,
+        EnterpriseAdminsSid = 48,
         /// <summary>Indicates a SID that matches the policy administrators group.</summary>
-        AccountPolicyAdminsSid = 49,
+        DomainPolicyAdminsSid = 49,
         /// <summary>Indicates a SID that matches the RAS and IAS server account.</summary>
-        AccountRasAndIasServersSid = 50,
+        DomainRasAndIasServersSid = 50,
         /// <summary>Indicates a SID present when the Microsoft NTLM authentication package authenticated the client.</summary>
         NtlmAuthenticationSid = 51,
         /// <summary>Indicates a SID present when the Microsoft Digest authentication package authenticated the client.</summary>
@@ -155,23 +156,25 @@ namespace CODA.NtdsAudit
         /// <summary>Indicates a SID that matches a write restricted code group.</summary>
         WinWriteRestrictedCodeSid = 70,
         /// <summary>Indicates a SID that matches a creator and owner rights group.</summary>
-        WinCreatorOwnerRightsSid = 71,
+        /*WinCreatorOwnerRightsSid = 71,
         /// <summary>Indicates a SID that matches a cacheable principals group.</summary>
         WinCacheablePrincipalsGroupSid = 72,
         /// <summary>Indicates a SID that matches a non-cacheable principals group.</summary>
         WinNonCacheablePrincipalsGroupSid = 73,
+        */
         /// <summary>Indicates a SID that matches an enterprise wide read-only controllers group.</summary>
         WinEnterpriseReadonlyControllersSid = 74,
-        /// <summary>Indicates a SID that matches an account read-only controllers group.</summary>
-        WinAccountReadonlyControllersSid = 75,
+        /// <summary>Indicates a SID that matches the domain read-only controllers group.</summary>
+        WinDomainReadonlyControllersSid = 75,
         /// <summary>Indicates a SID that matches an event log readers group.</summary>
         WinBuiltinEventLogReadersGroup = 76,
         /// <summary>Indicates a SID that matches a read-only enterprise domain controller.</summary>
-        WinNewEnterpriseReadonlyControllersSid = 77,
+        WinEnterpriseReadonlyControllerSid = 77,
         /// <summary>Indicates a SID that matches the built-in DCOM certification services access group.</summary>
         WinBuiltinCertSvcDComAccessGroup = 78,
         /// <summary>Indicates a SID that matches the medium plus integrity label.</summary>
         WinMediumPlusLabelSid = 79,
+        /*
         /// <summary>Indicates a SID that matches a local logon group.</summary>
         WinLocalLogonSid = 80,
         /// <summary>Indicates a SID that matches a console logon group.</summary>
@@ -202,6 +205,7 @@ namespace CODA.NtdsAudit
         WinCapabilityEnterpriseAuthenticationSid = 93,
         /// <summary>Indicates a SID for removable storage capability for app containers.</summary>
         WinCapabilityRemovableStorageSid = 94
+        */
         // Note: Adding additional values require changes everywhere where the value above is used as the maximum defined WellKnownSidType value.
         // E.g. System.Security.Principal.SecurityIdentifier constructor
     }

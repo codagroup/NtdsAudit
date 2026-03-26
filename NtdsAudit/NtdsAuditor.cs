@@ -8,7 +8,6 @@
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Security.Principal;
     using System.Text;
     using System.Text.RegularExpressions;
 
@@ -711,8 +710,8 @@
                         Dn = row.Dn,
                     };
                     domainInfo.AdministratorsSid = new MockSid(MockSidType.BuiltinAdministratorsSid, domainInfo.Sid);
-                    domainInfo.DomainAdminsSid = new MockSid(MockSidType.AccountDomainAdminsSid, domainInfo.Sid);
-                    domainInfo.EnterpriseAdminsSid = new MockSid(MockSidType.AccountEnterpriseAdminsSid, domainInfo.Sid);
+                    domainInfo.DomainAdminsSid = new MockSid(MockSidType.DomainAdministratorSid, domainInfo.Sid);
+                    domainInfo.EnterpriseAdminsSid = new MockSid(MockSidType.EnterpriseAdminsSid, domainInfo.Sid);
                     domainInfo.Fqdn = domainInfo.Dn.Replace("DC=", ".").Replace(",", string.Empty).TrimStart('.');
 
                     domains.Add(domainInfo);
