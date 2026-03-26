@@ -170,14 +170,12 @@ public static class Program
     }
     private static void WriteComputersCsvFile(string computersCsvPath, NtdsAuditor ntdsAudit)
     {
-        using (var file = new StreamWriter(computersCsvPath, false))
+        using var file = new StreamWriter(computersCsvPath, false);
+        file.WriteLine("Domain,Computer,Disabled,Last Logon,DN");
+        foreach (var computer in ntdsAudit.Computers)
         {
-            file.WriteLine("Domain,Computer,Disabled,Last Logon,DN");
-            foreach (var computer in ntdsAudit.Computers)
-            {
-                var domain = ntdsAudit.Domains.Single(x => x.Sid == computer.DomainSid);
-                file.WriteLine($"{domain.Fqdn},{computer.Name},{computer.Disabled},{computer.LastLogon},\"{computer.Dn}\"");
-            }
+            var domain = ntdsAudit.Domains.Single(x => x.Sid == computer.DomainSid);
+            file.WriteLine($"{domain.Fqdn},{computer.Name},{computer.Disabled},{computer.LastLogon},\"{computer.Dn}\"");
         }
     }
     private static void WritePwDumpFile(string pwdumpPath, NtdsAuditor ntdsAudit, DateTime baseDateTime, bool includeHistoryHashes, bool wordlistInUse, string dumpReversiblePath, bool useRdn, bool anonymise)
@@ -348,36 +346,34 @@ public static class Program
 
             if (users.Any(x => !string.IsNullOrEmpty(x.ClearTextPassword)) && !string.IsNullOrWhiteSpace(dumpReversiblePath))
             {
-                using (var file = new StreamWriter(dumpReversiblePath, false))
+                using var file = new StreamWriter(dumpReversiblePath, false);
+                var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
+                for (var i = 0; i < users.Length; i++)
                 {
-                    var r = new Random((int)((DateTimeOffset)baseDateTime).ToUnixTimeSeconds());
-                    for (var i = 0; i < users.Length; i++)
+                    string userId;
+
+                    if (anonymise)
                     {
-                        string userId;
+                        var bytes = new byte[16];
+                        r.NextBytes(bytes);
+                        userId = new Guid(bytes).ToString();
+                    }
+                    else if (useRdn)
+                    {
+                        userId = users[i].Name;
+                    }
+                    else
+                    {
+                        userId = users[i].SamAccountName;
+                    }
 
-                        if (anonymise)
-                        {
-                            var bytes = new byte[16];
-                            r.NextBytes(bytes);
-                            userId = new Guid(bytes).ToString();
-                        }
-                        else if (useRdn)
-                        {
-                            userId = users[i].Name;
-                        }
-                        else
-                        {
-                            userId = users[i].SamAccountName;
-                        }
+                    if (!string.IsNullOrEmpty(users[i].ClearTextPassword))
+                    {
+                        file.Write($"{domain.Fqdn}\\{userId}:{users[i].ClearTextPassword}");
 
-                        if (!string.IsNullOrEmpty(users[i].ClearTextPassword))
+                        if (i < users.Length - 1)
                         {
-                            file.Write($"{domain.Fqdn}\\{userId}:{users[i].ClearTextPassword}");
-
-                            if (i < users.Length - 1)
-                            {
-                                file.Write(Environment.NewLine);
-                            }
+                            file.Write(Environment.NewLine);
                         }
                     }
                 }
@@ -399,14 +395,12 @@ public static class Program
 
     private static void WriteUsersCsvFile(string usersCsvPath, NtdsAuditor ntdsAudit, DateTime baseDateTime, bool useRdn)
     {
-        using (var file = new StreamWriter(usersCsvPath, false))
+        using var file = new StreamWriter(usersCsvPath, false);
+        file.WriteLine("Domain,Username,Administrator,Domain Admin,Enterprise Admin,Disabled,Expired,Password Never Expires,Password Not Required,Password Last Changed,Last Logon,DN");
+        foreach (var user in ntdsAudit.Users)
         {
-            file.WriteLine("Domain,Username,Administrator,Domain Admin,Enterprise Admin,Disabled,Expired,Password Never Expires,Password Not Required,Password Last Changed,Last Logon,DN");
-            foreach (var user in ntdsAudit.Users)
-            {
-                var domain = ntdsAudit.Domains.Single(x => x.Sid == user.DomainSid);
-                file.WriteLine($"{domain.Fqdn},{(useRdn ? user.Name : user.SamAccountName)},{user.RecursiveGroupSids.Contains(domain.AdministratorsSid)},{user.RecursiveGroupSids.Contains(domain.DomainAdminsSid)},{user.RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()},{user.Disabled},{!user.Disabled && user.Expires.HasValue && user.Expires.Value < baseDateTime},{user.PasswordNeverExpires},{user.PasswordNotRequired},{user.PasswordLastChanged},{user.LastLogon},\"{user.Dn}\"");
-            }
+            var domain = ntdsAudit.Domains.Single(x => x.Sid == user.DomainSid);
+            file.WriteLine($"{domain.Fqdn},{(useRdn ? user.Name : user.SamAccountName)},{user.RecursiveGroupSids.Contains(domain.AdministratorsSid)},{user.RecursiveGroupSids.Contains(domain.DomainAdminsSid)},{user.RecursiveGroupSids.Intersect(ntdsAudit.Domains.Select(x => x.EnterpriseAdminsSid)).Any()},{user.Disabled},{!user.Disabled && user.Expires.HasValue && user.Expires.Value < baseDateTime},{user.PasswordNeverExpires},{user.PasswordNotRequired},{user.PasswordLastChanged},{user.LastLogon},\"{user.Dn}\"");
         }
     }
 

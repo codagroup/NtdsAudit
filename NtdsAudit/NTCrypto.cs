@@ -276,20 +276,14 @@
 
         private static byte[] DecryptDataUsingAes(byte[] key, byte[] salt, byte[] data)
         {
-            using (Aes aes = Aes.Create())
-            {
-                aes.Mode = CipherMode.CBC;
-                aes.Padding = PaddingMode.Zeros;
-                using (var decryptor = aes.CreateDecryptor(key, salt))
-                {
-                    using (var cryptoStream = new CryptoStream(new MemoryStream(data, false), decryptor, CryptoStreamMode.Read))
-                    using (var outputStream = new MemoryStream(data.Length))
-                    {
-                        cryptoStream.CopyTo(outputStream);
-                        return outputStream.ToArray();
-                    }
-                }
-            }
+            using Aes aes = Aes.Create();
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.Zeros;
+            using var decryptor = aes.CreateDecryptor(key, salt);
+            using var cryptoStream = new CryptoStream(new MemoryStream(data, false), decryptor, CryptoStreamMode.Read);
+            using var outputStream = new MemoryStream(data.Length);
+            cryptoStream.CopyTo(outputStream);
+            return outputStream.ToArray();
         }
 
         private static byte[] DecryptDataUsingRc4AndSalt(byte[] key, byte[] salt, byte[] data, int rounds)

@@ -412,50 +412,48 @@
                 stopwatch.Start();
             }
 
-            using (var table = db.OpenJetDbTable(LINKTABLE))
+            using var table = db.OpenJetDbTable(LINKTABLE);
+            // Get a dictionary mapping column names to column ids
+            var columnDictionary = table.GetColumnDictionary();
+
+            var linktable = new List<LinkTableRow>();
+            var deletedLinkCount = 0;
+
+            // Loop over the table
+            table.MoveBeforeFirst();
+            while (table.TryMoveNext())
             {
-                // Get a dictionary mapping column names to column ids
-                var columnDictionary = table.GetColumnDictionary();
+                var linkDelTimeColumn = new DateTimeColumnValue { Columnid = columnDictionary["link_deltime"] };
+                var linkDntColumn = new Int32ColumnValue { Columnid = columnDictionary["link_DNT"] };
+                var backlinkDnt = new Int32ColumnValue { Columnid = columnDictionary["backlink_DNT"] };
+                table.RetrieveColumns(linkDelTimeColumn, linkDntColumn, backlinkDnt);
 
-                var linktable = new List<LinkTableRow>();
-                var deletedLinkCount = 0;
-
-                // Loop over the table
-                table.MoveBeforeFirst();
-                while (table.TryMoveNext())
+                // Ignore deleted links
+                if (linkDelTimeColumn.Error == JET_wrn.Success)
                 {
-                    var linkDelTimeColumn = new DateTimeColumnValue { Columnid = columnDictionary["link_deltime"] };
-                    var linkDntColumn = new Int32ColumnValue { Columnid = columnDictionary["link_DNT"] };
-                    var backlinkDnt = new Int32ColumnValue { Columnid = columnDictionary["backlink_DNT"] };
-                    table.RetrieveColumns(linkDelTimeColumn, linkDntColumn, backlinkDnt);
-
-                    // Ignore deleted links
-                    if (linkDelTimeColumn.Error == JET_wrn.Success)
-                    {
-                        deletedLinkCount++;
-                        continue;
-                    }
-
-                    linktable.Add(new LinkTableRow
-                    {
-                        LinkDnt = linkDntColumn.Value ?? -1,
-                        BacklinkDnt = backlinkDnt.Value ?? -1
-                    });
+                    deletedLinkCount++;
+                    continue;
                 }
 
-                if (ShowDebugOutput)
+                linktable.Add(new LinkTableRow
                 {
-                    ConsoleEx.WriteDebug($"  Ignored {deletedLinkCount} deleted backlinks");
-                    ConsoleEx.WriteDebug($"  Found {linktable.Count} backlinks");
-                    if (stopwatch is not null)
-                    {
-                        stopwatch.Stop();
-                        ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
-                    }
-                }
-                progress?.Report(16 / (double)100);
-                return [.. linktable];
+                    LinkDnt = linkDntColumn.Value ?? -1,
+                    BacklinkDnt = backlinkDnt.Value ?? -1
+                });
             }
+
+            if (ShowDebugOutput)
+            {
+                ConsoleEx.WriteDebug($"  Ignored {deletedLinkCount} deleted backlinks");
+                ConsoleEx.WriteDebug($"  Found {linktable.Count} backlinks");
+                if (stopwatch is not null)
+                {
+                    stopwatch.Stop();
+                    ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                }
+            }
+            progress?.Report(16 / (double)100);
+            return [.. linktable];
         }
 
         private static MSysObjectsRow[] EnumerateMSysObjects(JetDb db, ref ProgressBar? progress)
