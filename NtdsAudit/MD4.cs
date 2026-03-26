@@ -95,7 +95,7 @@
             }
         }
 
-        private IEnumerable<byte> Bytes(uint word)
+        private static IEnumerable<byte> Bytes(uint word)
         {
             yield return (byte)(word & 255);
             yield return (byte)((word >> 8) & 255);
@@ -170,7 +170,7 @@
             }
         }
 
-        private IEnumerable<byte> Repeat(byte value, int count)
+        private static IEnumerable<byte> Repeat(byte value, int count)
         {
             for (int i = 0; i < count; i++)
             {

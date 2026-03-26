@@ -68,7 +68,7 @@ namespace CODA.NtdsAudit
         }
         #endregion
         #region Functions
-        private bool IsDomainSid(MockSidType sidType)
+        private static bool IsDomainSid(MockSidType sidType)
         {
             switch (sidType)
             {
@@ -234,7 +234,7 @@ namespace CODA.NtdsAudit
             return result;
         }
         //TODO: This can be more efficient
-        internal byte[]? CreateSidFromString(string sddlForm)
+        internal static byte[]? CreateSidFromString(string sddlForm)
         {
             if (string.IsNullOrEmpty(sddlForm)) throw new ArgumentException("SID cannot be null");
 
@@ -275,7 +275,7 @@ namespace CODA.NtdsAudit
             return binarySid;
         }
         // Barely any error checking here.....
-        internal byte[]? CreateWellKnownSid(MockSidType mockSidType, MockSid? domainSid)
+        internal static byte[]? CreateWellKnownSid(MockSidType mockSidType, MockSid? domainSid)
         {
             //If the SID to be generated is on the pre-defined list and either the domain is null (i.e. it's a local SID) or the domain SID is valid:
             if (MockSecurity.WellKnownSids.Any(sid => sid.SidType == mockSidType) && (domainSid is null || domainSid.SubAuthorities.Length <= MaxSubAuthorities))
