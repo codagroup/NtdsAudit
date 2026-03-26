@@ -3,21 +3,14 @@
     public static class MockSecurity
     {
         const byte SID_REVISION = 0x01;
-        public struct MAX_SID
+        public readonly struct MAX_SID(byte revision, byte subAuthorityCount, MockAuthority authority, ulong[] subAuthority)
         {
-            public readonly byte Revision;
-            public readonly byte SubAuthorityCount;
-            public readonly MockAuthority Authority;
-            public readonly ulong[] SubAuthority;
-            public MAX_SID(byte revision, byte subAuthorityCount, MockAuthority authority, ulong[] subAuthority)
-            {
-                Revision = revision;
-                SubAuthorityCount = subAuthorityCount;
-                Authority = authority;
-                SubAuthority = subAuthority;
-            }
+            public readonly byte Revision = revision;
+            public readonly byte SubAuthorityCount = subAuthorityCount;
+            public readonly MockAuthority Authority = authority;
+            public readonly ulong[] SubAuthority = subAuthority;
         }
-        public struct WKSID
+        public readonly struct WKSID
         {
             public readonly char[] SidString;
             public readonly MockSidType SidType;
@@ -26,7 +19,7 @@
             {
                 if (sidString.Length != 2) 
                 {
-                    throw new ArgumentOutOfRangeException("wStr", $"wStr must be a char[] of length 2"); 
+                    throw new ArgumentOutOfRangeException(nameof(sidString), $"sidString must be a char[] of length 2"); 
                 }
                 SidString = sidString; // From https://learn.microsoft.com/en-gb/windows/win32/secauthz/sid-strings
                 SidType = sidType;
