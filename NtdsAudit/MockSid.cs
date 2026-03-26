@@ -70,6 +70,7 @@ namespace CODA.NtdsAudit
         #region Functions
         private static bool IsDomainSid(MockSidType sidType)
         {
+#pragma warning disable IDE0066 // Convert switch statement to expression
             switch (sidType)
             {
                 case MockSidType.DomainAdministratorSid:
@@ -92,6 +93,7 @@ namespace CODA.NtdsAudit
                 default:
                     return false;
             }
+#pragma warning restore IDE0066 // Convert switch statement to expression
         }
         private void CreateFromBinaryForm(byte[] binaryForm, int offset)
         {
@@ -229,7 +231,7 @@ namespace CODA.NtdsAudit
             MockSid? result = null;
             if (SddlForm.Length >= 41)
             {
-                result = new MockSid(SddlForm.Substring(0, 41));
+                result = new MockSid(SddlForm[..41]);
             }
             return result;
         }
@@ -370,13 +372,14 @@ namespace CODA.NtdsAudit
             get; private set;
         } = String.Empty;
         public string Value { get { return SddlForm.ToUpperInvariant(); } }
-        public MockSid? AccountDomainSid { get {
-                if (_accountDomainSid is null)
-                {
-                    _accountDomainSid = GetAccountDomainSid();
-                }
+        public MockSid? AccountDomainSid 
+        { 
+            get
+            {
+                _accountDomainSid ??= GetAccountDomainSid();
                 return _accountDomainSid;
-            } }
+            } 
+        }
         public int BinaryLength { get { return _binaryForm!.Length; } }
         public MockAuthority Authority {  get { return _authority;} }
         public int[] SubAuthorities { get { return _subAuthorities!; } }
@@ -417,17 +420,17 @@ namespace CODA.NtdsAudit
                 result[2] = '1';
                 result[3] = '-';
                 int length = 4;
-                ((ulong)_authority).TryFormat(result.Slice(length), out int written);
+                ((ulong)_authority).TryFormat(result[length..], out int written);
                 length += written;
                 int[] values = _subAuthorities!;
                 for (int index = 0; index < values.Length; index++)
                 {
                     result[length] = '-';
                     length += 1;
-                    ((uint)values[index]).TryFormat(result.Slice(length), out written);
+                    ((uint)values[index]).TryFormat(result[length..], out written);
                     length += written;
                 }
-                SddlForm = result.Slice(0, length).ToString();
+                SddlForm = result[..length].ToString();
             }
             return SddlForm;
         }        

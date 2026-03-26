@@ -145,23 +145,17 @@
             var salt = encryptedPekListBlob.Skip(8).Take(16).ToArray();
             var encryptedPekList = encryptedPekListBlob.Skip(24).ToArray();
 
-            switch ((PekListFlags)flags)
+            return (PekListFlags)flags switch
             {
-                case PekListFlags.ClearText:
-                    return ParsePekList(encryptedPekList);
-                case PekListFlags.Encrypted:
-                    switch ((PekListVersion)version)
-                    {
-                        case PekListVersion.Windows2000:
-                            return ParsePekList(DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000));
-                        case PekListVersion.Windows2016:
-                            return ParsePekList([.. DecryptDataUsingAes(systemKey, salt, encryptedPekList)]);
-                        default:
-                            throw new ArgumentException("Invalid Pek List");
-                    }
-                default:
-                    throw new ArgumentException("Invalid Pek List");
-            }
+                PekListFlags.ClearText => ParsePekList(encryptedPekList),
+                PekListFlags.Encrypted => (PekListVersion)version switch
+                {
+                    PekListVersion.Windows2000 => ParsePekList(DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000)),
+                    PekListVersion.Windows2016 => ParsePekList([.. DecryptDataUsingAes(systemKey, salt, encryptedPekList)]),
+                    _ => throw new ArgumentException("Invalid Pek List"),
+                },
+                _ => throw new ArgumentException("Invalid Pek List"),
+            };
         }
 
         /// <summary>
