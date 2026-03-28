@@ -30,7 +30,7 @@ public class NTDSAudit_FileRead_Test
     {
         try
         {
-            NtdsAuditor ntds = new(TestHelpers.NtdsPath, false, false, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, TestHelpers.OuFilterPath);
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, false, false, TestHelpers.SystemHivePath, string.Empty, string.Empty);
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -62,50 +62,312 @@ public class NTDSAudit_FileRead_Test
     [Test]
     public void LoadValidNTDS_Dump()
     {
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, string.Empty, string.Empty);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
 
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
 
     [Test]
     public void LoadValidNTDS_Dump_WithHistory()
     {
         //TODO: Need to create users with history hashes.
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, string.Empty, string.Empty);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
 
     [Test]
     public void LoadValidNTDS_Dump_WithCrack()
     {
-
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, string.Empty);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
 
     [Test]
     public void LoadValidNTDS_Dump_WithHistory_WithCrack()
     {
         //TODO: Need to create users with history hashes.
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, string.Empty);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
     [Test]
     public void LoadValidNTDS_NoDump_OUFilter()
-    { }
+    {
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, false, false, TestHelpers.SystemHivePath, string.Empty, TestHelpers.OuFilterPath);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
+    }
 
     [Test]
     public void LoadValidNTDS_Dump_OUFilter()
-    { }
+    {
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, string.Empty, TestHelpers.OuFilterPath);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
+    }
 
     [Test]
     public void LoadValidNTDS_Dump_WithHistory_OUFilter()
     {
         //TODO: Need to create users with history hashes.
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, string.Empty, TestHelpers.OuFilterPath);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
 
     [Test]
     public void LoadValidNTDS_Dump_WithCrack_OUFilter()
     {
-
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, TestHelpers.OuFilterPath);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
 
     [Test]
     public void LoadValidNTDS_Dump_WithHistory_WithCrack_OUFilter()
     {
         //TODO: Need to create users with history hashes.
+        try
+        {
+            NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, TestHelpers.OuFilterPath);
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
+                Assert.That(userCount, Is.EqualTo(ntds.Users.Length));
+                Assert.That(disabledUserCount, Is.EqualTo(ntds.Users.Count(x => x.Disabled)));
+                Assert.That(expiredUserCount, Is.EqualTo(ntds.Users.Count(x => !x.Disabled && x.Expires.HasValue && x.Expires!.Value < baseDateTime)));
+                Assert.That(activeUserCount, Is.EqualTo(GetActiveUsers(ntds).Length));
+                Assert.That(inactiveuser1YearCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 365)));
+                Assert.That(inactiveuser90DaysCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.LastLogon) > 90)));
+                Assert.That(userNoPasswordCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNotRequired)));
+                Assert.That(userNonExpiryCount, Is.EqualTo(GetActiveUsers(ntds).Count(x => x.PasswordNeverExpires)));
+                Assert.That(userOldPassword1Year, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 365)));
+                Assert.That(userOldPassword90Days, Is.EqualTo(GetActiveUsers(ntds).Count(x => GetAge(x.PasswordLastChanged) > 90)));
+                Assert.That(administratorCount, Is.EqualTo(1));
+                Assert.That(domainAdminCount, Is.EqualTo(1));
+                Assert.That(enterpriseAdminCount, Is.EqualTo(1));
+                Assert.That(computerCount, Is.EqualTo(101));
+                Assert.That(disableComputerCount, Is.Zero);
+                Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
+                Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+        }
+        catch (Exception ex)
+        {
+            Assert.Fail(ex.Message);
+        }
     }
     #endregion
     #region Helpers
