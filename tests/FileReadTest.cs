@@ -23,8 +23,9 @@ public class NTDSAudit_FileRead_Test
     private readonly int inactiveComputer1YearCount = 100;
     private readonly int inactiveComputer90DayCount = 100;
     private readonly DateTime baseDateTime = new(2026, 01, 23, 14, 0, 32, DateTimeKind.Utc);
-    private readonly string LMHash = "AAD3B435B51404EEAAD3B435B51404EE"; //Empty LM Hash.
-    private readonly string NTHash = "DAE57D78FEC919471799CE0FAE8236B9"; //Pa55w0rd
+    private readonly string lmHash = "AAD3B435B51404EEAAD3B435B51404EE"; //Empty LM Hash.
+    private readonly string ntHash = "DAE57D78FEC919471799CE0FAE8236B9"; //Pa55w0rd!
+    private readonly string defaultPassword = "Pa55w0rd!";
     #endregion
     #region Tests
     [Test]
@@ -95,8 +96,8 @@ public class NTDSAudit_FileRead_Test
             Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
 
             // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
-            Assert.That(LMHash, Is.EqualTo(ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator")?.LmHash));
-            Assert.That(NTHash, Is.EqualTo(ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator")?.NtHash));
+            Assert.That(lmHash, Is.EqualTo(ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator")?.LmHash));
+            Assert.That(ntHash, Is.EqualTo(ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator")?.NtHash));
         }
         catch (Exception ex)
         {
@@ -134,6 +135,21 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
             }
 
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
+            }
         }
         catch (Exception ex)
         {
@@ -169,6 +185,25 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
             }
+
+
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+
+                Assert.That(defaultPassword, Is.EqualTo(userInfo?.Password));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
+            }            
         }
         catch (Exception ex)
         {
@@ -204,6 +239,25 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(disableComputerCount, Is.Zero);
                 Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+
+
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+
+                Assert.That(defaultPassword, Is.EqualTo(userInfo?.Password));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
             }
         }
         catch (Exception ex)
@@ -274,6 +328,23 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
             }
+
+
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
+            }
         }
         catch (Exception ex)
         {
@@ -310,6 +381,23 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
             }
+
+
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
+            }
         }
         catch (Exception ex)
         {
@@ -344,6 +432,25 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(disableComputerCount, Is.Zero);
                 Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+
+
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+
+                Assert.That(defaultPassword, Is.EqualTo(userInfo?.Password));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
             }
         }
         catch (Exception ex)
@@ -380,6 +487,25 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(disableComputerCount, Is.Zero);
                 Assert.That(inactiveComputer1YearCount, Is.EqualTo(100));
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
+            }
+
+
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            UserInfo userInfo = ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator");
+
+            if (userInfo is not null)
+            {
+                Assert.That(lmHash, Is.EqualTo(userInfo?.LmHash));
+                Assert.That(ntHash, Is.EqualTo(userInfo?.NtHash));
+
+                Assert.That(defaultPassword, Is.EqualTo(userInfo?.Password));
+            }
+            else
+            {
+                Assert.Fail("administrator user account not found");
             }
         }
         catch (Exception ex)
