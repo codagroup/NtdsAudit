@@ -23,6 +23,8 @@ public class NTDSAudit_FileRead_Test
     private readonly int inactiveComputer1YearCount = 100;
     private readonly int inactiveComputer90DayCount = 100;
     private readonly DateTime baseDateTime = new(2026, 01, 23, 14, 0, 32, DateTimeKind.Utc);
+    private readonly string LMHash = "AAD3B435B51404EEAAD3B435B51404EE"; //Empty LM Hash.
+    private readonly string NTHash = "DAE57D78FEC919471799CE0FAE8236B9"; //Pa55w0rd
     #endregion
     #region Tests
     [Test]
@@ -65,6 +67,8 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, string.Empty, string.Empty);
+            
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -87,6 +91,12 @@ public class NTDSAudit_FileRead_Test
                 Assert.That(inactiveComputer90DayCount, Is.EqualTo(100));
             }
 
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.LmHash != string.Empty)));
+            Assert.That(userCount, Is.EqualTo(ntds.Users.Count(u => u.NtHash != String.Empty)));
+
+            // All users have the same password, so this should work for all user accounts, but it DEFINITELY should work for the administrator account....
+            Assert.That(LMHash, Is.EqualTo(ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator")?.LmHash));
+            Assert.That(NTHash, Is.EqualTo(ntds.Users.First(u => u.Name.ToLowerInvariant() == "administrator")?.NtHash));
         }
         catch (Exception ex)
         {
@@ -101,6 +111,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, string.Empty, string.Empty);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -136,6 +147,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, string.Empty);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -171,6 +183,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, string.Empty);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -204,6 +217,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, false, false, TestHelpers.SystemHivePath, string.Empty, TestHelpers.OuFilterPath);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -238,6 +252,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, string.Empty, TestHelpers.OuFilterPath);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -273,6 +288,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, string.Empty, TestHelpers.OuFilterPath);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -307,6 +323,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, false, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, TestHelpers.OuFilterPath);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));
@@ -342,6 +359,7 @@ public class NTDSAudit_FileRead_Test
         try
         {
             NtdsAuditor ntds = new(TestHelpers.NtdsPath, true, true, TestHelpers.SystemHivePath, TestHelpers.WordlistPath, TestHelpers.OuFilterPath);
+            // Check we can actually process the ntds.dit file
             using (Assert.EnterMultipleScope())
             {
                 Assert.That(domainCount, Is.EqualTo(ntds.Domains.Length));

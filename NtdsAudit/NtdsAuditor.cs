@@ -955,7 +955,7 @@
 
             var systemKey = SystemHive.LoadSystemKeyFromHive(systemKeyPath);
 
-            var encryptedPek = _datatable.Single(x => x.PekList != null).PekList;
+            var encryptedPek = _datatable.Single(x => x.PekList.Length > 0).PekList;
             var decryptedPekList = NTCrypto.DecryptPekList(systemKey, encryptedPek);
 
             foreach (var row in _datatable)
