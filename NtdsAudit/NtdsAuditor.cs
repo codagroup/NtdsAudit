@@ -8,14 +8,13 @@
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Runtime.Serialization;
     using System.Text;
     using System.Text.RegularExpressions;
 
     /// <summary>
     /// Processes an NTDS database.
     /// </summary>
-    public class NtdsAuditor
+    public partial class NtdsAuditor
     {
         private const string DATATABLE = "datatable";
         private const string LINKTABLE = "link_table";
@@ -27,6 +26,8 @@
         private readonly bool _useOUFilter;
         private readonly IEnumerable<string> _ouFilter = [];
 
+        [GeneratedRegex("[A-Za-z-]", RegexOptions.None)]
+        private static partial Regex AlphaRegex();
         /// <summary>
         /// Initializes a new instance of the <see cref="NtdsAuditor"/> class.
         /// </summary>
@@ -483,7 +484,7 @@
                     {
                         mSysObjects.Add(new MSysObjectsRow
                         {
-                            AttributeId = int.Parse(Regex.Replace(nameColumn.Value, "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture),
+                            AttributeId = int.Parse(AlphaRegex().Replace(nameColumn.Value, string.Empty), CultureInfo.InvariantCulture),
                             ColumnName = nameColumn.Value,
                         });
                     }
@@ -601,9 +602,9 @@
                 stopwatch.Start();
             }
 
-            var commonNameAttrbiuteId = int.Parse(Regex.Replace(_ldapDisplayNameToDatatableColumnNameDictionary["cn"], "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture);
-            var organizationalUnitAttrbiuteId = int.Parse(Regex.Replace(_ldapDisplayNameToDatatableColumnNameDictionary["ou"], "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture);
-            var domainComponentAttrbiuteId = int.Parse(Regex.Replace(_ldapDisplayNameToDatatableColumnNameDictionary["dc"], "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture);
+            var commonNameAttrbiuteId = int.Parse(AlphaRegex().Replace(_ldapDisplayNameToDatatableColumnNameDictionary["cn"], string.Empty), CultureInfo.InvariantCulture);
+            var organizationalUnitAttrbiuteId = int.Parse(AlphaRegex().Replace(_ldapDisplayNameToDatatableColumnNameDictionary["ou"], string.Empty), CultureInfo.InvariantCulture);
+            var domainComponentAttrbiuteId = int.Parse(AlphaRegex().Replace(_ldapDisplayNameToDatatableColumnNameDictionary["dc"], string.Empty), CultureInfo.InvariantCulture);
 
             var attributeIdToDistinguishedNamePrefexDictionary = new Dictionary<int, string>
             {
@@ -728,13 +729,13 @@
             foreach (var group in Groups)
             {
                 // If the group DNT is not in the link dictionary, then no relevant group members were found
-                if (!linkDictionary.ContainsKey(group.Dnt))
+                if (!linkDictionary.TryGetValue(group.Dnt, out IEnumerable<int>? value))
                 {
                     group.MembersDnts = [];
                 }
                 else
                 {
-                    group.MembersDnts = [.. linkDictionary[group.Dnt].Where(x => x != group.Dnt && (dntToObjectCategoryDictionary.ContainsKey(x) && (dntToObjectCategoryDictionary[x] == "Group" || dntToObjectCategoryDictionary[x] == "Builtin" || dntToObjectCategoryDictionary[x] == "Person")))];
+                    group.MembersDnts = [.. value.Where(x => x != group.Dnt && (dntToObjectCategoryDictionary.ContainsKey(x) && (dntToObjectCategoryDictionary[x] == "Group" || dntToObjectCategoryDictionary[x] == "Builtin" || dntToObjectCategoryDictionary[x] == "Person")))];
                 }
             }
 
@@ -875,7 +876,7 @@
                     string credentials = string.Empty;
                     if (row.SupplementalCredentials is not null) 
                     {
-                        credentials = row.SupplementalCredentials!.ContainsKey("Primary:CLEARTEXT") ? Encoding.Unicode.GetString(row.SupplementalCredentials["Primary:CLEARTEXT"]) : string.Empty;
+                        credentials = row.SupplementalCredentials!.TryGetValue("Primary:CLEARTEXT", out byte[]? value) ? Encoding.Unicode.GetString(value) : string.Empty;
                     }
                     var userInfo = new UserInfo
                     {
@@ -928,9 +929,9 @@
 
             foreach (var user in Users)
             {
-                if (ntlmHashToPasswordDictionary.ContainsKey(user.NtHash))
+                if (ntlmHashToPasswordDictionary.TryGetValue(user.NtHash, out string? value))
                 {
-                    user.Password = ntlmHashToPasswordDictionary[user.NtHash];
+                    user.Password = value;
                 }
             }
 

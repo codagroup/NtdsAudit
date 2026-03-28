@@ -18,7 +18,7 @@
             using var md4 = new MD4();
             var unicodePassword = Encoding.Convert(Encoding.ASCII, Encoding.Unicode, Encoding.ASCII.GetBytes(password));
             var hash = md4.ComputeHash(unicodePassword);
-            return BitConverter.ToString(hash).Replace("-", string.Empty);
+            return Convert.ToHexString(hash);
         }
     }
 }
