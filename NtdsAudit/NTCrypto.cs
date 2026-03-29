@@ -5,7 +5,6 @@
     using System.ComponentModel;
     using System.IO;
     using System.Linq;
-    using System.Reflection.Metadata.Ecma335;
     using System.Runtime.InteropServices;
     using System.Security.Cryptography;
     using System.Text;
@@ -106,11 +105,11 @@
             for (var i = 0; i < decryptedData.Length; i += 16)
             {
                 (var key1, var key2) = RidToKeys(rid);
-                var decryptedHash = DecryptDataWithKeyPair(key1, key2, decryptedData.Skip(i).Take(16).ToArray());
+                var decryptedHash = DecryptDataWithKeyPair(key1, key2, [.. decryptedData.Skip(i).Take(16)]);
                 decryptedHashes.AddRange(decryptedHash);
             }
 
-            return decryptedHashes.ToArray();
+            return [.. decryptedHashes];
         }
 
         /// <summary>
@@ -146,23 +145,17 @@
             var salt = encryptedPekListBlob.Skip(8).Take(16).ToArray();
             var encryptedPekList = encryptedPekListBlob.Skip(24).ToArray();
 
-            switch ((PekListFlags)flags)
+            return (PekListFlags)flags switch
             {
-                case PekListFlags.ClearText:
-                    return ParsePekList(encryptedPekList);
-                case PekListFlags.Encrypted:
-                    switch ((PekListVersion)version)
-                    {
-                        case PekListVersion.Windows2000:
-                            return ParsePekList(DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000));
-                        case PekListVersion.Windows2016:
-                            return ParsePekList(DecryptDataUsingAes(systemKey, salt, encryptedPekList).ToArray());
-                        default:
-                            throw new ArgumentException("Invalid Pek List");
-                    }
-                default:
-                    throw new ArgumentException("Invalid Pek List");
-            }
+                PekListFlags.ClearText => ParsePekList(encryptedPekList),
+                PekListFlags.Encrypted => (PekListVersion)version switch
+                {
+                    PekListVersion.Windows2000 => ParsePekList(DecryptDataUsingRc4AndSalt(systemKey, salt, encryptedPekList, 1000)),
+                    PekListVersion.Windows2016 => ParsePekList([.. DecryptDataUsingAes(systemKey, salt, encryptedPekList)]),
+                    _ => throw new ArgumentException("Invalid Pek List"),
+                },
+                _ => throw new ArgumentException("Invalid Pek List"),
+            };
         }
 
         /// <summary>
@@ -197,8 +190,8 @@
                 case EncryptionType.PekWithAes:
                     // When using AES, data is padded and the first 4 bytes contains the actual data length
                     var length = BitConverter.ToUInt32(encryptedData, 0);
-                    encryptedData = encryptedData.Skip(4).ToArray();
-                    return DecryptDataUsingAes(pek, salt, encryptedData).Take((int)length).ToArray();
+                    encryptedData = [.. encryptedData.Skip(4)];
+                    return [.. DecryptDataUsingAes(pek, salt, encryptedData).Take((int)length)];
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(encryptedBlob), Invariant($"Encryption type \"{(EncryptionType)algorithm}\" is not supported."));
@@ -277,20 +270,14 @@
 
         private static byte[] DecryptDataUsingAes(byte[] key, byte[] salt, byte[] data)
         {
-            using (Aes aes = Aes.Create())
-            {
-                aes.Mode = CipherMode.CBC;
-                aes.Padding = PaddingMode.Zeros;
-                using (var decryptor = aes.CreateDecryptor(key, salt))
-                {
-                    using (var cryptoStream = new CryptoStream(new MemoryStream(data, false), decryptor, CryptoStreamMode.Read))
-                    using (var outputStream = new MemoryStream(data.Length))
-                    {
-                        cryptoStream.CopyTo(outputStream);
-                        return outputStream.ToArray();
-                    }
-                }
-            }
+            using Aes aes = Aes.Create();
+            aes.Mode = CipherMode.CBC;
+            aes.Padding = PaddingMode.Zeros;
+            using var decryptor = aes.CreateDecryptor(key, salt);
+            using var cryptoStream = new CryptoStream(new MemoryStream(data, false), decryptor, CryptoStreamMode.Read);
+            using var outputStream = new MemoryStream(data.Length);
+            cryptoStream.CopyTo(outputStream);
+            return outputStream.ToArray();
         }
 
         private static byte[] DecryptDataUsingRc4AndSalt(byte[] key, byte[] salt, byte[] data, int rounds)
@@ -435,7 +422,7 @@
             NativeMethods.CryptDestroyKey(hKey1);
             NativeMethods.CryptReleaseContext(hProv, 0);
 
-            return data1.Concat(data2).ToArray();
+            return [.. data1, .. data2];
         }
 
         /// <summary>
@@ -464,7 +451,6 @@
             return keys;
         }
 
-#pragma warning disable SA1008
 
         private static (byte[] key1, byte[] key2) RidToKeys(uint rid)
         {
@@ -489,8 +475,6 @@
 
             return (StrToKey(s1), StrToKey(s2));
         }
-
-#pragma warning restore SA1008
 
         private static byte[] StrToKey(char[] str)
         {

@@ -25,7 +25,7 @@
         /// <summary>
         /// Gets or sets the SID of the domain to which the account belongs.
         /// </summary>
-        public SecurityIdentifier DomainSid { get; set; } = new(WellKnownSidType.NullSid, null);
+        public MockSid DomainSid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
         /// Gets or sets the last logon date and time.

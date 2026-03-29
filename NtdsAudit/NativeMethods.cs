@@ -1,6 +1,4 @@
-﻿#pragma warning disable SA1600
-
-namespace CODA.NtdsAudit
+﻿namespace CODA.NtdsAudit
 {
     using System;
     using System.Runtime.InteropServices;
@@ -110,5 +108,3 @@ namespace CODA.NtdsAudit
         }
     }
 }
-
-#pragma warning restore SA1600
