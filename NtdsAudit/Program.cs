@@ -58,49 +58,57 @@ public static class Program
         });
 
         ParseResult result = cmd.Parse(args);
-        if (!result.Errors.Any())
+        if (!result.Tokens.Any(
+            t => t.Value.Equals("--version", StringComparison.OrdinalIgnoreCase) || 
+            t.Value.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+            t.Value.Equals("-h", StringComparison.OrdinalIgnoreCase) ||
+            t.Value.Equals("-?")
+            ))
         {
-            NtdsAuditor ntds = new(
-                result.GetValue(ntdsPath)!.FullName,
-                result.GetValue(pwdumpPath) is not null,
-                result.GetValue(includeHistoryHashes),
-                result.GetValue(systemHivePath) is not null ? result.GetValue(systemHivePath)!.FullName : "",
-                result.GetValue(wordlistPath) is not null ? result.GetValue(wordlistPath)!.FullName : "",
-                result.GetValue(ouFilterFilePath) is not null ? result.GetValue(ouFilterFilePath)!.FullName : ""
-            );
-            
-            PrintConsoleStatistics(
-                ntds,
-                result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(),DateTimeKind.Utc)
-            );
-
-            if (result.GetValue(pwdumpPath) is not null)
+            if (!result.Errors.Any())
             {
-                WritePwDumpFile(
-                    result.GetValue(pwdumpPath)!.FullName,
-                    ntds,
-                    result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(),DateTimeKind.Utc),
+                NtdsAuditor ntds = new(
+                    result.GetValue(ntdsPath)!.FullName,
+                    result.GetValue(pwdumpPath) is not null,
                     result.GetValue(includeHistoryHashes),
-                    result.GetValue(wordlistPath) is not null,
-                    result.GetValue(dumpReversiblePath) is not null ? result.GetValue(dumpReversiblePath)!.FullName : "",
-                    result.GetValue(useRdn),
-                    result.GetValue(anonymise)
+                    result.GetValue(systemHivePath) is not null ? result.GetValue(systemHivePath)!.FullName : "",
+                    result.GetValue(wordlistPath) is not null ? result.GetValue(wordlistPath)!.FullName : "",
+                    result.GetValue(ouFilterFilePath) is not null ? result.GetValue(ouFilterFilePath)!.FullName : ""
                 );
-            }
 
-            if (result.GetValue(usersCsvPath) is not null)
-            {
-                WriteUsersCsvFile(
-                    result.GetValue(usersCsvPath)!.FullName,
+                PrintConsoleStatistics(
                     ntds,
-                    result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(),DateTimeKind.Utc),
-                    result.GetValue(useRdn)
+                    result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(), DateTimeKind.Utc)
                 );
-            }
 
-            if (result.GetValue(computersCsvPath) is not null)
-            {
-                WriteComputersCsvFile(result.GetValue(computersCsvPath)!.FullName, ntds);
+                if (result.GetValue(pwdumpPath) is not null)
+                {
+                    WritePwDumpFile(
+                        result.GetValue(pwdumpPath)!.FullName,
+                        ntds,
+                        result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(), DateTimeKind.Utc),
+                        result.GetValue(includeHistoryHashes),
+                        result.GetValue(wordlistPath) is not null,
+                        result.GetValue(dumpReversiblePath) is not null ? result.GetValue(dumpReversiblePath)!.FullName : "",
+                        result.GetValue(useRdn),
+                        result.GetValue(anonymise)
+                    );
+                }
+
+                if (result.GetValue(usersCsvPath) is not null)
+                {
+                    WriteUsersCsvFile(
+                        result.GetValue(usersCsvPath)!.FullName,
+                        ntds,
+                        result.GetValue(baseDate) == DateOnly.FromDayNumber(0) ? result.GetValue(ntdsPath)!.LastWriteTimeUtc : result.GetValue(baseDate).ToDateTime(new(), DateTimeKind.Utc),
+                        result.GetValue(useRdn)
+                    );
+                }
+
+                if (result.GetValue(computersCsvPath) is not null)
+                {
+                    WriteComputersCsvFile(result.GetValue(computersCsvPath)!.FullName, ntds);
+                }
             }
         }
         return result.Invoke();
