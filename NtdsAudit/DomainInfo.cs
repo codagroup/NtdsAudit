@@ -29,6 +29,11 @@
         public MockSid EnterpriseAdminsSid { get; set; } = new(MockSidType.NullSid, null);
 
         /// <summary>
+        /// Gets or sets the SID of the Schema Admins group.
+        /// </summary>
+        public MockSid SchemaAdminsSid { get; set; } = new(MockSidType.NullSid, null);
+
+        /// <summary>
         /// Gets or sets the FQDN of the domain.
         /// </summary>
         public string Fqdn { get; set; } = string.Empty;

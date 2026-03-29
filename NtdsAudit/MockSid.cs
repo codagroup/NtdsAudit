@@ -73,7 +73,6 @@ namespace CODA.NtdsAudit
 #pragma warning disable IDE0066 // Convert switch statement to expression
             switch (sidType)
             {
-                case MockSidType.DomainAdministratorSid:
                 case MockSidType.DomainGuestSid:
                 case MockSidType.DomainKrbtgtSid:
                 case MockSidType.DomainAdminsSid:
@@ -116,14 +115,7 @@ namespace CODA.NtdsAudit
             {
                 throw new ArgumentException($"Incorrect number of subauthorities: {binaryForm[offset + 1]}", nameof(binaryForm));
             }
-            // Make sure the buffer is big enough
-
-            int totalLength = (4 * subAuthoritiesLength) + 8;
-            if (binaryForm.Length - offset < totalLength)
-            {
-                throw new ArgumentException($"Buffer too small: {binaryForm.Length - offset}", nameof(binaryForm));
-            }
-
+            
             Span<int> subAuthorities = stackalloc int[MaxSubAuthorities];
             MockAuthority authority = (MockAuthority)(
                 (((long)binaryForm[offset + 2]) << 40) +
@@ -146,10 +138,17 @@ namespace CODA.NtdsAudit
                 );
             }
 
-            CreateFromParts(authority, subAuthorities[..subAuthoritiesLength]);
+            if ((4 * subAuthoritiesLength) + 8 < binaryForm.Length) //RID needs to be reattached.
+            {
+                CreateFromParts(authority, subAuthorities[..subAuthoritiesLength], binaryForm[^4..]);
+            }
+            else
+            {
+                CreateFromParts(authority, subAuthorities[..subAuthoritiesLength]);
+            }
             return;
         }
-        private void CreateFromParts(MockAuthority authority, ReadOnlySpan<int> subAuthorities)
+        private void CreateFromParts(MockAuthority authority, ReadOnlySpan<int> subAuthorities, byte[]? ridBytes = null)
         {
             //
             // Check the number of subauthorities passed in
@@ -182,7 +181,7 @@ namespace CODA.NtdsAudit
 
             _authority = authority;
             _subAuthorities = subAuthorities.ToArray();
-            
+
             //
             // Compute and store the binary form
             //
@@ -193,8 +192,15 @@ namespace CODA.NtdsAudit
             //     ULONG SubAuthority[ANYSIZE_ARRAY]
             // } SID, *PISID;
             //
-            
-            _binaryForm = new byte[(4 * _subAuthorities.Length) + 8];
+
+            if (ridBytes is null)
+            {
+                _binaryForm = new byte[(4 * _subAuthorities.Length) + 8];
+            }
+            else
+            {
+                _binaryForm = new byte[(4 * _subAuthorities.Length) + 12];
+            }
             
             //
             // First two bytes contain revision and subauthority count
@@ -222,6 +228,11 @@ namespace CODA.NtdsAudit
                 {
                     _binaryForm[8 + 4 * i + shift] = unchecked((byte)(((ulong)_subAuthorities[i]) >> (shift * 8)));
                 }
+            }
+
+            if (ridBytes is not null)
+            {
+                Array.Copy(ridBytes, 0, _binaryForm, (_binaryForm.Length - ridBytes.Length), ridBytes.Length);
             }
 
             UpdateSddlForm();
@@ -302,7 +313,7 @@ namespace CODA.NtdsAudit
                 }
                 else
                 {
-                    byte size = (byte)((domainSid.SubAuthorities.Length * 4) + 8);
+                    byte size = (byte)((domainSid.SubAuthorities.Length * 4) + 12);
                     byte[] sidBytes = new byte[size];
                     sidBytes[0] = wkSID.Sid.Revision;
                     sidBytes[1] = (byte)domainSid.SubAuthorities.Length;
@@ -315,6 +326,11 @@ namespace CODA.NtdsAudit
 
                         Array.Copy(subAuthBytes, 0, sidBytes, 8 + (i * 4), 4);
                     }
+                    byte[] wkSidAuthorityBytes = BitConverter.GetBytes(wkSID.Sid.SubAuthority.Last());
+                    if (!BitConverter.IsLittleEndian) Array.Reverse(wkSidAuthorityBytes);
+
+                    Array.Copy(wkSidAuthorityBytes, 0, sidBytes, sidBytes.Length-4, 4);
+
                     return sidBytes;
                 }
             }
@@ -340,20 +356,41 @@ namespace CODA.NtdsAudit
                 else
                 {
                     // Get Sub-Authorities (4 bytes each, Little-Endian)
-                    for (int i = 0; i < subAuthorityCount; i++)
+                    if (_binaryForm.Length == (4 * subAuthorityCount) + 12) //Need to add RIDs for some built-in groups
                     {
-                        int offset = 8 + (i * 4);
-                        uint subAuth = BitConverter.ToUInt32(_binaryForm, offset);
-
-                        // Handle Big-Endian systems
-                        if (!BitConverter.IsLittleEndian)
+                        for (int i = 0; i < subAuthorityCount + 1; i++)
                         {
-                            byte[] bytes = BitConverter.GetBytes(subAuth);
-                            Array.Reverse(bytes);
-                            subAuth = BitConverter.ToUInt32(bytes, 0);
-                        }
+                            int offset = 8 + (i * 4);
+                            uint subAuth = BitConverter.ToUInt32(_binaryForm, offset);
 
-                        sb.Append($"-{subAuth}");
+                            // Handle Big-Endian systems
+                            if (!BitConverter.IsLittleEndian)
+                            {
+                                byte[] bytes = BitConverter.GetBytes(subAuth);
+                                Array.Reverse(bytes);
+                                subAuth = BitConverter.ToUInt32(bytes, 0);
+                            }
+
+                            sb.Append($"-{subAuth}");
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < subAuthorityCount; i++)
+                        {
+                            int offset = 8 + (i * 4);
+                            uint subAuth = BitConverter.ToUInt32(_binaryForm, offset);
+
+                            // Handle Big-Endian systems
+                            if (!BitConverter.IsLittleEndian)
+                            {
+                                byte[] bytes = BitConverter.GetBytes(subAuth);
+                                Array.Reverse(bytes);
+                                subAuth = BitConverter.ToUInt32(bytes, 0);
+                            }
+
+                            sb.Append($"-{subAuth}");
+                        }
                     }
                 }
                 SddlForm = sb.ToString();
@@ -387,19 +424,22 @@ namespace CODA.NtdsAudit
         #region Overrides
         public override bool Equals([NotNullWhen(true)] object? obj)
         {
-            return this == obj as MockSid;
+            if (obj != null && obj is MockSid)
+            {
+                return this.SddlForm == (obj as MockSid)?.SddlForm; 
+            }
+            else
+            {
+                return false; 
+            }
         }
         public bool Equals(MockSid sid)
         {
-            return this == sid;
+            return this.SddlForm == sid.SddlForm;
         }
         public override int GetHashCode()
         {
-            int hash = ((long)_authority).GetHashCode();
-            for (int i = 0; i < _subAuthorities!.Length; i++)
-            {
-                hash ^= _subAuthorities[i];
-            }
+            int hash = SddlForm.GetHashCode();
             return hash;
         }
         public override string ToString()
@@ -433,7 +473,7 @@ namespace CODA.NtdsAudit
                 SddlForm = result[..length].ToString();
             }
             return SddlForm;
-        }        
+        }
         #endregion
     }
 }

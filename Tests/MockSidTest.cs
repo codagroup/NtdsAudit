@@ -87,7 +87,6 @@ namespace Tests
         {
             switch (sidType)
             {
-                case MockSidType.DomainAdministratorSid:
                 case MockSidType.DomainGuestSid:
                 case MockSidType.DomainKrbtgtSid:
                 case MockSidType.DomainAdminsSid:

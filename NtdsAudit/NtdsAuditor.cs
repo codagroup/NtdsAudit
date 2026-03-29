@@ -574,7 +574,7 @@
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                     };
 
-                    if (_useOUFilter && !_ouFilter.Any(filterOU => computerInfo.Dn.EndsWith(filterOU)))
+                    if (_useOUFilter && !_ouFilter.Any(filterOU => computerInfo.Dn.ToLowerInvariant().EndsWith(filterOU.ToLowerInvariant())))
                     {
                         continue;
                     }
@@ -691,9 +691,10 @@
                         Name = row.Name,
                         Dn = row.Dn,
                     };
-                    domainInfo.AdministratorsSid = new MockSid(MockSidType.BuiltinAdministratorsSid, domainInfo.Sid);
-                    domainInfo.DomainAdminsSid = new MockSid(MockSidType.DomainAdministratorSid, domainInfo.Sid);
+                    domainInfo.AdministratorsSid = new MockSid(MockSidType.BuiltinAdministratorsSid, null);
+                    domainInfo.DomainAdminsSid = new MockSid(MockSidType.DomainAdminsSid, domainInfo.Sid);
                     domainInfo.EnterpriseAdminsSid = new MockSid(MockSidType.EnterpriseAdminsSid, domainInfo.Sid);
+                    domainInfo.SchemaAdminsSid = new MockSid(MockSidType.SchemaAdminsSid, domainInfo.Sid);
                     domainInfo.Fqdn = domainInfo.Dn.Replace("DC=", ".").Replace(",", string.Empty).TrimStart('.');
 
                     domains.Add(domainInfo);
@@ -899,7 +900,7 @@
                         ClearTextPassword = credentials
                     };
 
-                    if (_useOUFilter && !_ouFilter.Any(filterOU => userInfo.Dn.EndsWith(filterOU)))
+                    if (_useOUFilter && !_ouFilter.Any(filterOU => userInfo.Dn.ToLowerInvariant().EndsWith(filterOU.ToLowerInvariant())))
                     {
                         continue;
                     }

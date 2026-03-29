@@ -62,7 +62,7 @@ namespace CODA.NtdsAudit
         NetworkServiceSid = 24,
         /// <summary>Indicates a SID that matches the domain account.</summary>
         BuiltinDomainSid = 25,
-        /// <summary>Indicates a SID that matches the administrators group.</summary>
+        /// <summary>Indicates a SID that matches the local administrators group (which is the domain administrators group if on a DC).</summary>
         BuiltinAdministratorsSid = 26,
         /// <summary>Indicates a SID that matches built-in user accounts.</summary>
         BuiltinUsersSid = 27,
