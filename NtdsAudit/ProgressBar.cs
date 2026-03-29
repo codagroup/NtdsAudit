@@ -14,7 +14,7 @@
         private const string Animation = @"|/-\";
         private const int BlockCount = 10;
         private readonly TimeSpan _animationInterval = TimeSpan.FromSeconds(1.0 / 8);
-        private readonly object _lock = new object();
+        private readonly Lock _lock = new();
         private readonly string _text;
         private readonly Timer _timer;
         private int _animationIndex = 0;
@@ -96,7 +96,7 @@
             _timer.Change(_animationInterval, TimeSpan.FromMilliseconds(-1));
         }
 
-        private void TimerHandler(object state)
+        private void TimerHandler(object? state)
         {
             lock (_lock)
             {
@@ -131,11 +131,11 @@
             }
 
             // Backtrack to the first differing character
-            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new();
             outputBuilder.Append('\b', _currentText.Length - commonPrefixLength);
 
             // Output new suffix
-            outputBuilder.Append(text.Substring(commonPrefixLength));
+            outputBuilder.Append(text[commonPrefixLength..]);
 
             // If the new text is shorter than the old one: delete overlapping characters
             int overlapCount = _currentText.Length - text.Length;

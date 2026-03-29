@@ -8,25 +8,26 @@
     using System.Globalization;
     using System.IO;
     using System.Linq;
-    using System.Security.Principal;
     using System.Text;
     using System.Text.RegularExpressions;
 
     /// <summary>
     /// Processes an NTDS database.
     /// </summary>
-    public class NtdsAuditor
+    public partial class NtdsAuditor
     {
         private const string DATATABLE = "datatable";
         private const string LINKTABLE = "link_table";
         private const string MSYSOBJECTS = "MSysObjects";
         private readonly DatatableRow[] _datatable;
-        private readonly IReadOnlyDictionary<string, string> _ldapDisplayNameToDatatableColumnNameDictionary;
+        private readonly ReadOnlyDictionary<string, string> _ldapDisplayNameToDatatableColumnNameDictionary;
         private readonly LinkTableRow[] _linkTable;
         private readonly MSysObjectsRow[] _mSysObjects;
         private readonly bool _useOUFilter;
         private readonly IEnumerable<string> _ouFilter = [];
 
+        [GeneratedRegex("[A-Za-z-]", RegexOptions.None)]
+        private static partial Regex AlphaRegex();
         /// <summary>
         /// Initializes a new instance of the <see cref="NtdsAuditor"/> class.
         /// </summary>
@@ -94,7 +95,7 @@
         {
             ADS_GROUP_TYPE_GLOBAL_GROUP = 0x00000002,
             ADS_GROUP_TYPE_DOMAIN_LOCAL_GROUP = 0x00000004,
-            ADS_GROUP_TYPE_LOCAL_GROUP = 0x00000004,
+            ADS_GROUP_TYPE_LOCAL_GROUP = ADS_GROUP_TYPE_DOMAIN_LOCAL_GROUP,
             ADS_GROUP_TYPE_UNIVERSAL_GROUP = 0x00000008,
             ADS_GROUP_TYPE_SECURITY_ENABLED = 0x80000000
         }
@@ -165,7 +166,7 @@
             return hex.Replace("-", string.Empty);
         }
 
-        private static DatatableRow[] EnumerateDatatableTable(JetDb db, IReadOnlyDictionary<string, string> ldapDisplayNameToDatatableColumnNameDictionary, bool dumpHashes, bool includeHistoryHashes, ref ProgressBar? progress)
+        private static DatatableRow[] EnumerateDatatableTable(JetDb db, ReadOnlyDictionary<string, string> ldapDisplayNameToDatatableColumnNameDictionary, bool dumpHashes, bool includeHistoryHashes, ref ProgressBar? progress)
         {
             Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
@@ -246,7 +247,7 @@
                         }
                     }
 
-                    table.RetrieveColumns(columns.ToArray());
+                    table.RetrieveColumns([.. columns]);
 
                     // Skip deleted objects
                     if (isDeletedColumn.Value.HasValue && isDeletedColumn.Value != 0)
@@ -262,15 +263,15 @@
                         continue;
                     }
 
-                    SecurityIdentifier? sid = null;
+                    MockSid? sid = null;
                     uint rid = 0;
                     if (objectSidColumn.Error == JET_wrn.Success)
                     {
                         var sidBytes = objectSidColumn.Value;
                         var ridBytes = sidBytes.Skip(sidBytes.Length - sizeof(int)).Take(sizeof(int)).Reverse().ToArray();
-                        sidBytes = sidBytes.Take(sidBytes.Length - sizeof(int)).Concat(ridBytes).ToArray();
+                        sidBytes = [.. sidBytes.Take(sidBytes.Length - sizeof(int)).Concat(ridBytes)];
                         rid = BitConverter.ToUInt32(ridBytes, 0);
-                        sid = new SecurityIdentifier(sidBytes, 0);
+                        sid = new MockSid(sidBytes, 0);
                     }
 
                     var row = new DatatableRow
@@ -283,7 +284,7 @@
                         Name = nameColumn.Value ?? string.Empty,
                         ObjectCategoryDnt = objectCategoryColumn.Value,
                         Rid = rid,
-                        Sid = sid ?? new SecurityIdentifier(WellKnownSidType.NullSid, sid),
+                        Sid = sid ?? new MockSid(MockSidType.NullSid, sid),
                         ParentDnt = parentDistinguishedNameTagColumn.Value,
                         Phantom = objColumn.Value == false,
                         LastPasswordChange = passwordLastSetColumn.Value,
@@ -344,14 +345,11 @@
                     ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                 }
             }
-            if (progress is not null)
-            {
-                progress.Report(32 / (double)100);
-            }
-            return datatable.ToArray();
+            progress?.Report(32 / (double)100);
+            return [.. datatable];
         }
 
-        private static IReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects, ref ProgressBar? progress)
+        private static ReadOnlyDictionary<string, string> EnumerateDatatableTableLdapDisplayNames(JetDb db, MSysObjectsRow[] mSysObjects, ref ProgressBar? progress)
         {
             Stopwatch? stopwatch = null;
             if (ShowDebugOutput)
@@ -401,10 +399,7 @@
                     ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                 }
             }
-            if (progress is not null)
-            {
-                progress.Report(24 / (double)100);
-            }
+            progress?.Report(24 / (double)100);
             return new ReadOnlyDictionary<string, string>(ldapDisplayNameToColumnNameDictionary);
         }
 
@@ -418,53 +413,48 @@
                 stopwatch.Start();
             }
 
-            using (var table = db.OpenJetDbTable(LINKTABLE))
+            using var table = db.OpenJetDbTable(LINKTABLE);
+            // Get a dictionary mapping column names to column ids
+            var columnDictionary = table.GetColumnDictionary();
+
+            var linktable = new List<LinkTableRow>();
+            var deletedLinkCount = 0;
+
+            // Loop over the table
+            table.MoveBeforeFirst();
+            while (table.TryMoveNext())
             {
-                // Get a dictionary mapping column names to column ids
-                var columnDictionary = table.GetColumnDictionary();
+                var linkDelTimeColumn = new DateTimeColumnValue { Columnid = columnDictionary["link_deltime"] };
+                var linkDntColumn = new Int32ColumnValue { Columnid = columnDictionary["link_DNT"] };
+                var backlinkDnt = new Int32ColumnValue { Columnid = columnDictionary["backlink_DNT"] };
+                table.RetrieveColumns(linkDelTimeColumn, linkDntColumn, backlinkDnt);
 
-                var linktable = new List<LinkTableRow>();
-                var deletedLinkCount = 0;
-
-                // Loop over the table
-                table.MoveBeforeFirst();
-                while (table.TryMoveNext())
+                // Ignore deleted links
+                if (linkDelTimeColumn.Error == JET_wrn.Success)
                 {
-                    var linkDelTimeColumn = new DateTimeColumnValue { Columnid = columnDictionary["link_deltime"] };
-                    var linkDntColumn = new Int32ColumnValue { Columnid = columnDictionary["link_DNT"] };
-                    var backlinkDnt = new Int32ColumnValue { Columnid = columnDictionary["backlink_DNT"] };
-                    table.RetrieveColumns(linkDelTimeColumn, linkDntColumn, backlinkDnt);
-
-                    // Ignore deleted links
-                    if (linkDelTimeColumn.Error == JET_wrn.Success)
-                    {
-                        deletedLinkCount++;
-                        continue;
-                    }
-
-                    linktable.Add(new LinkTableRow
-                    {
-                        LinkDnt = linkDntColumn.Value.HasValue ? linkDntColumn.Value.Value : -1,
-                        BacklinkDnt = backlinkDnt.Value.HasValue ? backlinkDnt.Value.Value : -1
-                    });
+                    deletedLinkCount++;
+                    continue;
                 }
 
-                if (ShowDebugOutput)
+                linktable.Add(new LinkTableRow
                 {
-                    ConsoleEx.WriteDebug($"  Ignored {deletedLinkCount} deleted backlinks");
-                    ConsoleEx.WriteDebug($"  Found {linktable.Count} backlinks");
-                    if (stopwatch is not null)
-                    {
-                        stopwatch.Stop();
-                        ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
-                    }
-                }
-                if (progress is not null)
-                {
-                    progress.Report(16 / (double)100);
-                }
-                return linktable.ToArray();
+                    LinkDnt = linkDntColumn.Value ?? -1,
+                    BacklinkDnt = backlinkDnt.Value ?? -1
+                });
             }
+
+            if (ShowDebugOutput)
+            {
+                ConsoleEx.WriteDebug($"  Ignored {deletedLinkCount} deleted backlinks");
+                ConsoleEx.WriteDebug($"  Found {linktable.Count} backlinks");
+                if (stopwatch is not null)
+                {
+                    stopwatch.Stop();
+                    ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
+                }
+            }
+            progress?.Report(16 / (double)100);
+            return [.. linktable];
         }
 
         private static MSysObjectsRow[] EnumerateMSysObjects(JetDb db, ref ProgressBar? progress)
@@ -494,7 +484,7 @@
                     {
                         mSysObjects.Add(new MSysObjectsRow
                         {
-                            AttributeId = int.Parse(Regex.Replace(nameColumn.Value, "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture),
+                            AttributeId = int.Parse(AlphaRegex().Replace(nameColumn.Value, string.Empty), CultureInfo.InvariantCulture),
                             ColumnName = nameColumn.Value,
                         });
                     }
@@ -510,14 +500,11 @@
                     ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
                 }
             }
-            if (progress is not null) 
-            {
-                progress.Report(8 / (double)100);
-            }
-            return mSysObjects.ToArray();
+            progress?.Report(8 / (double)100);
+            return [.. mSysObjects];
         }
 
-        private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value, ref ProgressBar? progress)
+        private static DateTime? GetAccountExpiresDateTimeFromByteArray(byte[] value)
         {
             // https://msdn.microsoft.com/en-us/library/ms675098(v=vs.85).aspx
             if (value == null)
@@ -582,12 +569,12 @@
                     {
                         Name = row.Name,
                         Dn = row.Dn,
-                        DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier([],0),
+                        DomainSid = row.Sid.AccountDomainSid ?? new MockSid([],0),
                         Disabled = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE) == (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE,
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                     };
 
-                    if (_useOUFilter && !_ouFilter.Any(filterOU => computerInfo.Dn.EndsWith(filterOU)))
+                    if (_useOUFilter && !_ouFilter.Any(filterOU => computerInfo.Dn.ToLowerInvariant().EndsWith(filterOU.ToLowerInvariant())))
                     {
                         continue;
                     }
@@ -601,11 +588,8 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(96 / (double)100);
-            }
-            return computers.ToArray();
+            progress?.Report(96 / (double)100);
+            return [.. computers];
         }
 
         private void CalculateDnsForDatatableRows(ref ProgressBar? progress)
@@ -618,9 +602,9 @@
                 stopwatch.Start();
             }
 
-            var commonNameAttrbiuteId = int.Parse(Regex.Replace(_ldapDisplayNameToDatatableColumnNameDictionary["cn"], "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture);
-            var organizationalUnitAttrbiuteId = int.Parse(Regex.Replace(_ldapDisplayNameToDatatableColumnNameDictionary["ou"], "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture);
-            var domainComponentAttrbiuteId = int.Parse(Regex.Replace(_ldapDisplayNameToDatatableColumnNameDictionary["dc"], "[A-Za-z-]", string.Empty, RegexOptions.None), CultureInfo.InvariantCulture);
+            var commonNameAttrbiuteId = int.Parse(AlphaRegex().Replace(_ldapDisplayNameToDatatableColumnNameDictionary["cn"], string.Empty), CultureInfo.InvariantCulture);
+            var organizationalUnitAttrbiuteId = int.Parse(AlphaRegex().Replace(_ldapDisplayNameToDatatableColumnNameDictionary["ou"], string.Empty), CultureInfo.InvariantCulture);
+            var domainComponentAttrbiuteId = int.Parse(AlphaRegex().Replace(_ldapDisplayNameToDatatableColumnNameDictionary["dc"], string.Empty), CultureInfo.InvariantCulture);
 
             var attributeIdToDistinguishedNamePrefexDictionary = new Dictionary<int, string>
             {
@@ -683,10 +667,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(48 / (double)100);
-            }
+            progress?.Report(48 / (double)100);
         }
 
         private DomainInfo[] CalculateDomainInfo(ref ProgressBar? progress)
@@ -710,9 +691,10 @@
                         Name = row.Name,
                         Dn = row.Dn,
                     };
-                    domainInfo.AdministratorsSid = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, domainInfo.Sid);
-                    domainInfo.DomainAdminsSid = new SecurityIdentifier(WellKnownSidType.AccountDomainAdminsSid, domainInfo.Sid);
-                    domainInfo.EnterpriseAdminsSid = new SecurityIdentifier(WellKnownSidType.AccountEnterpriseAdminsSid, domainInfo.Sid);
+                    domainInfo.AdministratorsSid = new MockSid(MockSidType.BuiltinAdministratorsSid, null);
+                    domainInfo.DomainAdminsSid = new MockSid(MockSidType.DomainAdminsSid, domainInfo.Sid);
+                    domainInfo.EnterpriseAdminsSid = new MockSid(MockSidType.EnterpriseAdminsSid, domainInfo.Sid);
+                    domainInfo.SchemaAdminsSid = new MockSid(MockSidType.SchemaAdminsSid, domainInfo.Sid);
                     domainInfo.Fqdn = domainInfo.Dn.Replace("DC=", ".").Replace(",", string.Empty).TrimStart('.');
 
                     domains.Add(domainInfo);
@@ -724,11 +706,8 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(64 / (double)100);
-            }
-            return domains.ToArray();
+            progress?.Report(64 / (double)100);
+            return [.. domains];
         }
 
         private void CalculateGroupMembership(ref ProgressBar? progress)
@@ -751,15 +730,13 @@
             foreach (var group in Groups)
             {
                 // If the group DNT is not in the link dictionary, then no relevant group members were found
-                if (!linkDictionary.ContainsKey(group.Dnt))
+                if (!linkDictionary.TryGetValue(group.Dnt, out IEnumerable<int>? value))
                 {
-                    group.MembersDnts = new int[] { };
+                    group.MembersDnts = [];
                 }
                 else
                 {
-                    group.MembersDnts = linkDictionary[group.Dnt]
-                        .Where(x => x != group.Dnt && (dntToObjectCategoryDictionary.ContainsKey(x) && (dntToObjectCategoryDictionary[x] == "Group" || dntToObjectCategoryDictionary[x] == "Builtin" || dntToObjectCategoryDictionary[x] == "Person")))
-                        .ToArray();
+                    group.MembersDnts = [.. value.Where(x => x != group.Dnt && (dntToObjectCategoryDictionary.ContainsKey(x) && (dntToObjectCategoryDictionary[x] == "Group" || dntToObjectCategoryDictionary[x] == "Builtin" || dntToObjectCategoryDictionary[x] == "Person")))];
                 }
             }
 
@@ -768,13 +745,13 @@
             {
                 var recursiveMembersDnts = new HashSet<int>();
                 CalculateRecursiveGroupMembership(group, recursiveMembersDnts, ref progress);
-                group.RecursiveMembersDnts = recursiveMembersDnts.ToArray();
+                group.RecursiveMembersDnts = [.. recursiveMembersDnts];
             }
 
             // Loop over each user and add group sids
             foreach (var user in Users)
             {
-                user.RecursiveGroupSids = Groups.Where(x => x.RecursiveMembersDnts.Contains(user.Dnt)).Select(x => x.Sid).ToArray();
+                user.RecursiveGroupSids = [.. Groups.Where(x => x.RecursiveMembersDnts.Contains(user.Dnt)).Select(x => x.Sid)];
             }
 
             if (ShowDebugOutput && stopwatch is not null)
@@ -782,10 +759,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(100 / (double)100);
-            }
+            progress?.Report(100 / (double)100);
         }
 
         private void CalculateObjectCategoryStringForDatableRows(ref ProgressBar? progress)
@@ -815,10 +789,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(56 / (double)100);
-            }
+            progress?.Report(56 / (double)100);
         }
 
         private void CalculateRecursiveGroupMembership(GroupInfo group, HashSet<int> recursiveMembersDnts, ref ProgressBar? progress)
@@ -865,8 +836,8 @@
                         {
                             Name = row.Name,
                             Dn = row.Dn,
-                            DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier(WellKnownSidType.NullSid,row.Sid.AccountDomainSid),
-                            Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
+                            DomainSid = row.Sid.AccountDomainSid ?? new MockSid(MockSidType.NullSid,row.Sid.AccountDomainSid),
+                            Dnt = row.Dnt ?? -1,
                             Sid = row.Sid,
                         };
                         groups.Add(groupInfo);
@@ -883,12 +854,9 @@
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
 
-            if (progress is not null)
-            {
-                progress.Report(88 / (double)100);
-            }
+            progress?.Report(88 / (double)100);
 
-            return groups.ToArray();
+            return [.. groups];
         }
 
         private UserInfo[] CalculateUserInfo(ref ProgressBar? progress)
@@ -909,19 +877,19 @@
                     string credentials = string.Empty;
                     if (row.SupplementalCredentials is not null) 
                     {
-                        credentials = row.SupplementalCredentials!.ContainsKey("Primary:CLEARTEXT") ? Encoding.Unicode.GetString(row.SupplementalCredentials["Primary:CLEARTEXT"]) : string.Empty;
+                        credentials = row.SupplementalCredentials!.TryGetValue("Primary:CLEARTEXT", out byte[]? value) ? Encoding.Unicode.GetString(value) : string.Empty;
                     }
                     var userInfo = new UserInfo
                     {
-                        Dnt = row.Dnt.HasValue ? row.Dnt.Value : -1,
+                        Dnt = row.Dnt ?? -1,
                         Name = row.Name,
                         Dn = row.Dn,
-                        DomainSid = row.Sid.AccountDomainSid ?? new SecurityIdentifier(WellKnownSidType.NullSid, row.Sid.AccountDomainSid),
+                        DomainSid = row.Sid.AccountDomainSid ?? new MockSid(MockSidType.NullSid, row.Sid.AccountDomainSid),
                         Disabled = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE) == (int)ADS_USER_FLAG.ADS_UF_ACCOUNTDISABLE,
                         LastLogon = row.LastLogon ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         PasswordNotRequired = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD) == (int)ADS_USER_FLAG.ADS_UF_PASSWD_NOTREQD,
                         PasswordNeverExpires = (row.UserAccountControlValue & (int)ADS_USER_FLAG.ADS_UF_DONT_EXPIRE_PASSWD) == (int)ADS_USER_FLAG.ADS_UF_DONT_EXPIRE_PASSWD,
-                        Expires = GetAccountExpiresDateTimeFromByteArray(row.AccountExpires, ref progress),
+                        Expires = GetAccountExpiresDateTimeFromByteArray(row.AccountExpires),
                         PasswordLastChanged = row.LastPasswordChange ?? DateTime.Parse("01.01.1601 00:00:00", CultureInfo.InvariantCulture),
                         SamAccountName = row.SamAccountName,
                         Rid = row.Rid,
@@ -932,7 +900,7 @@
                         ClearTextPassword = credentials
                     };
 
-                    if (_useOUFilter && !_ouFilter.Any(filterOU => userInfo.Dn.EndsWith(filterOU)))
+                    if (_useOUFilter && !_ouFilter.Any(filterOU => userInfo.Dn.ToLowerInvariant().EndsWith(filterOU.ToLowerInvariant())))
                     {
                         continue;
                     }
@@ -946,11 +914,8 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(72 / (double)100);
-            }
-            return users.ToArray();
+            progress?.Report(72 / (double)100);
+            return [.. users];
         }
 
         private void CheckUsersForWeakPasswords(Dictionary<string, string> ntlmHashToPasswordDictionary, ref ProgressBar? progress)
@@ -965,9 +930,9 @@
 
             foreach (var user in Users)
             {
-                if (ntlmHashToPasswordDictionary.ContainsKey(user.NtHash))
+                if (ntlmHashToPasswordDictionary.TryGetValue(user.NtHash, out string? value))
                 {
-                    user.Password = ntlmHashToPasswordDictionary[user.NtHash];
+                    user.Password = value;
                 }
             }
 
@@ -976,10 +941,7 @@
                 stopwatch.Stop();
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
-            if (progress is not null)
-            {
-                progress.Report(80 / (double)100);
-            }
+            progress?.Report(80 / (double)100);
         }
 
         private void DecryptSecretData(string systemKeyPath, bool includeHistoryHashes, ref ProgressBar? progress)
@@ -994,7 +956,7 @@
 
             var systemKey = SystemHive.LoadSystemKeyFromHive(systemKeyPath);
 
-            var encryptedPek = _datatable.Single(x => x.PekList != null).PekList;
+            var encryptedPek = _datatable.Single(x => x.PekList.Length > 0).PekList;
             var decryptedPekList = NTCrypto.DecryptPekList(systemKey, encryptedPek);
 
             foreach (var row in _datatable)
@@ -1049,7 +1011,7 @@
                         {
                             var hashStrings = new List<string>();
 
-                            var decryptedHashes = new byte[0];
+                            var decryptedHashes = Array.Empty<byte>();
                             try
                             {
                                 decryptedHashes = NTCrypto.DecryptHashes(decryptedPekList, row.EncryptedLmHistory, row.Rid);
@@ -1072,18 +1034,18 @@
                                 }
                                 else
                                 {
-                                    hashStrings.Add(ByteArrayToHexString(decryptedHashes.Skip(i).Take(16).ToArray()));
+                                    hashStrings.Add(ByteArrayToHexString([.. decryptedHashes.Skip(i).Take(16)]));
                                 }
                             }
 
-                            row.LmHistory = hashStrings.ToArray();
+                            row.LmHistory = [.. hashStrings];
                         }
 
                         if (row.EncryptedNtHistory != null)
                         {
                             var hashStrings = new List<string>();
 
-                            var decryptedHashes = new byte[0];
+                            var decryptedHashes = Array.Empty<byte>();
                             try
                             {
                                 decryptedHashes = NTCrypto.DecryptHashes(decryptedPekList, row.EncryptedNtHistory, row.Rid);
@@ -1099,10 +1061,10 @@
                             // The first hash is the same as the current hash, so skip it
                             for (var i = 16; i < decryptedHashes.Length; i += 16)
                             {
-                                hashStrings.Add(ByteArrayToHexString(decryptedHashes.Skip(i).Take(16).ToArray()));
+                                hashStrings.Add(ByteArrayToHexString([.. decryptedHashes.Skip(i).Take(16)]));
                             }
 
-                            row.NtHistory = hashStrings.ToArray();
+                            row.NtHistory = [.. hashStrings];
                         }
                     }
 
@@ -1129,10 +1091,7 @@
                 ConsoleEx.WriteDebug($"  Completed in {stopwatch.Elapsed}");
             }
 
-            if (progress is not null)
-            {
-                progress.Report(40 / (double)100);
-            }
+            progress?.Report(40 / (double)100);
         }
     }
 }
