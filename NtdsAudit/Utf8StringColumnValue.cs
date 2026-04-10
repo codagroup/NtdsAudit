@@ -1,18 +1,16 @@
-﻿#pragma warning disable IDE0130 // Namespace does not match folder structure
-namespace Microsoft.Isam.Esent.Interop
-#pragma warning restore IDE0130 // Namespace does not match folder structure
-{
-    using System.Text;
+﻿namespace CODA.NtdsAudit;
 
-    /// <summary>
-    /// A UTF8 string column value.
-    /// </summary>
-    internal class Utf8StringColumnValue : StringColumnValue
+using CODA.NtdsAudit.ESENT;
+using System.Text;
+
+/// <summary>
+/// A UTF8 string column value.
+/// </summary>
+public class Utf8StringColumnValue : StringColumnValue
+{
+    /// <inheritdoc/>
+    public override void SetValueFromBytes(byte[] value, int startIndex, int count, int err)
     {
-        /// <inheritdoc/>
-        protected override void GetValueFromBytes(byte[] value, int startIndex, int count, int err)
-        {
-            Value = Encoding.UTF8.GetString(value, startIndex, count);
-        }
+        Value = Encoding.UTF8.GetString(value, startIndex, count);
     }
 }

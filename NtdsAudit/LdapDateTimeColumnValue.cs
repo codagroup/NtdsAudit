@@ -1,27 +1,24 @@
-﻿#pragma warning disable IDE0130 // Namespace does not match folder structure
-namespace Microsoft.Isam.Esent.Interop
-#pragma warning restore IDE0130 // Namespace does not match folder structure
-{
-    using System;
+﻿using CODA.NtdsAudit.ESENT;
 
-    /// <summary>
-    /// A date time column value based on the LDAP epoch.
-    /// </summary>
-    internal class LdapDateTimeColumnValue : DateTimeColumnValue
+namespace CODA.NtdsAudit;
+
+/// <summary>
+/// A date time column value based on the LDAP epoch.
+/// </summary>
+public class LdapDateTimeColumnValue : DateTimeColumnValue
+{
+    /// <inheritdoc/>
+    protected override void GetValueFromBytes(byte[] value, int startIndex, int count, JetWarningType warning)
     {
-        /// <inheritdoc/>
-        protected override void GetValueFromBytes(byte[] value, int startIndex, int count, int err)
+        if (warning == JetWarningType.ColumnNull)
         {
-            if ((JET_wrn)err == JET_wrn.ColumnNull)
-            {
-                Value = null;
-            }
-            else
-            {
-                CheckDataCount(count);
-                var ticks = BitConverter.ToInt64(value, startIndex);
-                Value = new DateTime(1601, 1, 1).AddTicks(ticks);
-            }
+            Value = null;
+        }
+        else
+        {
+            CheckDataCount(count);
+            var ticks = BitConverter.ToInt64(value, startIndex);
+            Value = new DateTime(1601, 1, 1).AddTicks(ticks);
         }
     }
 }
