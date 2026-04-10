@@ -5,10 +5,10 @@ namespace CODA.NtdsAudit;
 /// <summary>
 /// A date time column value based on the LDAP epoch.
 /// </summary>
-public class LdapDateTimeColumnValue : DateTimeColumnValue
+internal class LdapDateTimeColumnValue : DateTimeColumnValue
 {
     /// <inheritdoc/>
-    protected override void GetValueFromBytes(byte[] value, int startIndex, int count, JetWarningType warning)
+    protected void GetValueFromBytes(byte[] value, int startIndex, int count, JetWarningType warning)
     {
         if (warning == JetWarningType.ColumnNull)
         {
